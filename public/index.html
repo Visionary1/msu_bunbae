@@ -555,6 +555,7 @@
                 let socket = null;
                 let saveTimeouts = {}; // For debouncing saves
                 let dataLoadingComplete = false; // Track if initial data loading is complete
+                let suppressSocketUpdates = false; // NEW: Prevent socket update loops
         
                 // Debounced save function to prevent focus loss
                 function debouncedSave(bossId, delay = 1000) {
@@ -585,8 +586,16 @@
                     });
                     
                     socket.on('bossDataUpdated', (data) => {
-                        // Only update if the data is different and we've completed initial loading
-                        if (dataLoadingComplete && (!bossData[data.bossId] || JSON.stringify(bossData[data.bossId].data) !== JSON.stringify(data.data))) {
+                        // FIXED: Only update if we're not suppressing updates and loading is complete
+                        if (suppressSocketUpdates || !dataLoadingComplete) {
+                            console.log('Suppressing socket update for:', data.bossId);
+                            return;
+                        }
+        
+                        // Only update if the data is actually different
+                        if (!bossData[data.bossId] || JSON.stringify(bossData[data.bossId].data) !== JSON.stringify(data.data)) {
+                            console.log('Applying socket update for:', data.bossId);
+                            
                             bossData[data.bossId] = {
                                 name: data.bossName,
                                 data: data.data,
@@ -594,13 +603,22 @@
                             };
                             
                             if (selectedBosses.includes(data.bossId)) {
+                                // Suppress our own updates while restoring
+                                suppressSocketUpdates = true;
                                 setTimeout(() => {
                                     restoreBossData(data.bossId);
                                     updateDistribution(data.bossId);
                                     updateTotalRewardsPanel();
+                                    suppressSocketUpdates = false;
                                 }, 100);
                             }
                         }
+                    });
+        
+                    // NEW: Handle save errors
+                    socket.on('saveError', (error) => {
+                        console.error('Save error:', error);
+                        alert('Failed to save data: ' + error.message);
                     });
                 }
         
@@ -675,53 +693,72 @@ async function createRoom() {
         async function loadBossData() {
             console.log('Loading boss data for room:', currentRoom.code);
             
+            // Suppress socket updates during initial loading
+            suppressSocketUpdates = true;
+            
             try {
                 const response = await fetch(`/api/rooms/${currentRoom.code}/boss-data`);
                 if (response.ok) {
                     const serverBossData = await response.json();
                     console.log('Loaded server boss data:', serverBossData);
                     
-                    // First, update the bossData object
-                    Object.keys(serverBossData).forEach(bossId => {
-                        bossData[bossId] = {
-                            name: serverBossData[bossId].name,
-                            data: serverBossData[bossId].data,
-                            active: true
-                        };
-                        
-                        // Update checkbox selection
-                        const checkbox = document.getElementById(bossId);
-                        if (checkbox && !checkbox.checked) {
-                            checkbox.checked = true;
-                            const bossItem = checkbox.closest('.boss-item');
-                            bossItem.classList.add('selected');
-                            if (!selectedBosses.includes(bossId)) {
-                                selectedBosses.push(bossId);
+                    // Check if we actually have any data
+                    const hasData = Object.keys(serverBossData).length > 0;
+                    console.log('Has server data:', hasData);
+                    
+                    if (hasData) {
+                        // First, update the bossData object
+                        Object.keys(serverBossData).forEach(bossId => {
+                            bossData[bossId] = {
+                                name: serverBossData[bossId].name,
+                                data: serverBossData[bossId].data,
+                                active: true
+                            };
+                            
+                            console.log(`Boss ${bossId} has ${bossData[bossId].data?.members?.length || 0} members`);
+                            
+                            // Update checkbox selection
+                            const checkbox = document.getElementById(bossId);
+                            if (checkbox && !checkbox.checked) {
+                                checkbox.checked = true;
+                                const bossItem = checkbox.closest('.boss-item');
+                                bossItem.classList.add('selected');
+                                if (!selectedBosses.includes(bossId)) {
+                                    selectedBosses.push(bossId);
+                                }
                             }
-                        }
-                    });
-                    
-                    // Now update the boss details display
-                    updateBossDetails();
-                    
-                    // After the DOM is updated, restore all the boss data with longer delays
-                    setTimeout(() => {
-                        Object.keys(serverBossData).forEach((bossId, index) => {
-                            console.log(`Scheduling restore for boss: ${bossId} with delay ${index * 200}ms`);
-                            setTimeout(() => {
-                                restoreBossData(bossId);
-                            }, index * 200); // Stagger the restoration
                         });
                         
-                        // Mark loading as complete after all restorations are scheduled
+                        // Now update the boss details display
+                        updateBossDetails();
+                        
+                        // After the DOM is updated, restore all the boss data
                         setTimeout(() => {
-                            dataLoadingComplete = true;
-                        }, Object.keys(serverBossData).length * 200 + 500);
-                    }, 200);
+                            Object.keys(serverBossData).forEach((bossId, index) => {
+                                console.log(`Scheduling restore for boss: ${bossId}`);
+                                setTimeout(() => {
+                                    restoreBossData(bossId);
+                                }, index * 100); // Stagger the restoration
+                            });
+                            
+                            // Re-enable socket updates after restoration is complete
+                            setTimeout(() => {
+                                suppressSocketUpdates = false;
+                                dataLoadingComplete = true;
+                                console.log('Data loading complete, socket updates re-enabled');
+                            }, Object.keys(serverBossData).length * 100 + 200);
+                        }, 300);
+                    } else {
+                        // No data to load
+                        suppressSocketUpdates = false;
+                        dataLoadingComplete = true;
+                        console.log('No server data found, loading complete');
+                    }
                 }
             } catch (error) {
                 console.error('Error loading boss data:', error);
-                dataLoadingComplete = true; // Mark as complete even on error
+                suppressSocketUpdates = false;
+                dataLoadingComplete = true;
             }
         }
 
@@ -1084,7 +1121,7 @@ async function createRoom() {
         }
 
 // Data persistence and real-time sync
-async function saveBossData(bossId) {
+async function saveBossData(bossId, suppressBroadcast = false) {
             const partyContainer = document.getElementById(`party-${bossId}`);
             if (!partyContainer || !currentRoom) return;
             
@@ -1126,10 +1163,10 @@ async function saveBossData(bossId) {
             bossData[bossId].data = { members: memberData };
             bossData[bossId].active = true;
 
-            console.log(`Saving boss data for ${bossId}:`, memberData);
+            console.log(`Saving boss data for ${bossId}, members:`, memberData.length, 'suppressBroadcast:', suppressBroadcast);
 
-            // Send to server and other clients
-            if (socket && socket.connected) {
+            // Only send to server if not suppressing broadcast (to avoid loops)
+            if (!suppressBroadcast && socket && socket.connected) {
                 socket.emit('updateBossData', {
                     roomCode: currentRoom.code,
                     bossId,
@@ -1209,12 +1246,11 @@ async function saveBossData(bossId) {
                 }
             });
             
-            // ✅ THIS IS THE KEY FIX: Save the data after restoring it
+            // Update the distribution after restoring all data
             setTimeout(() => {
                 updateDistribution(bossId);
-                // Save the restored data to the server so other users can see it
-                saveBossData(bossId);
-            }, 50);
+                // REMOVED: No longer auto-save after restoration to prevent loops
+            }, 10);
         }
 
         // Distribution calculation
