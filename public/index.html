@@ -549,11 +549,25 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
 
-    let currentRoom = null;
+        let currentRoom = null;
         let selectedBosses = [];
         let partyMembers = [];
         let bossData = {};
         let socket = null;
+        let saveTimeouts = {}; // For debouncing saves
+
+        // Debounced save function to prevent focus loss
+        function debouncedSave(bossId, delay = 1000) {
+            // Clear existing timeout for this boss
+            if (saveTimeouts[bossId]) {
+                clearTimeout(saveTimeouts[bossId]);
+            }
+            
+            // Set new timeout
+            saveTimeouts[bossId] = setTimeout(() => {
+                saveBossData(bossId);
+            }, delay);
+        }
 
         // Initialize Socket.IO connection
         function initializeSocket() {
@@ -571,18 +585,21 @@
             });
             
             socket.on('bossDataUpdated', (data) => {
-                bossData[data.bossId] = {
-                    name: data.bossName,
-                    data: data.data,
-                    active: true
-                };
-                
-                if (selectedBosses.includes(data.bossId)) {
-                    setTimeout(() => {
-                        restoreBossData(data.bossId);
-                        updateDistribution(data.bossId);
-                        updateTotalRewardsPanel();
-                    }, 100);
+                // Only update if the data is different to prevent unnecessary re-renders
+                if (!bossData[data.bossId] || JSON.stringify(bossData[data.bossId].data) !== JSON.stringify(data.data)) {
+                    bossData[data.bossId] = {
+                        name: data.bossName,
+                        data: data.data,
+                        active: true
+                    };
+                    
+                    if (selectedBosses.includes(data.bossId)) {
+                        setTimeout(() => {
+                            restoreBossData(data.bossId);
+                            updateDistribution(data.bossId);
+                            updateTotalRewardsPanel();
+                        }, 100);
+                    }
                 }
             });
         }
@@ -695,121 +712,23 @@
             document.getElementById('currentRoomCode').textContent = currentRoom.code;
             
             const roomLink = document.getElementById('roomLink');
-            const url = `${window.location.origin}/?room=${currentRoom.code}`;
+            const url = `${window.location.origin}?room=${currentRoom.code}`;
             roomLink.href = url;
-            roomLink.onclick = () => {
-                navigator.clipboard.writeText(url);
-                alert('Link copied to clipboard!');
+            roomLink.onclick = (e) => {
+                e.preventDefault(); // Prevent navigation
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('Link copied to clipboard!');
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = url;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    alert('Link copied to clipboard!');
+                });
             };
-        }
-
-        // Boss selection
-        function toggleBoss(bossId) {
-            const checkbox = document.getElementById(bossId);
-            checkbox.checked = !checkbox.checked;
-            
-            const bossItem = checkbox.closest('.boss-item');
-            if (checkbox.checked) {
-                bossItem.classList.add('selected');
-                if (!selectedBosses.includes(bossId)) {
-                    selectedBosses.push(bossId);
-                }
-            } else {
-                bossItem.classList.remove('selected');
-                selectedBosses = selectedBosses.filter(id => id !== bossId);
-            }
-
-            updateBossDetails();
-        }
-
-        function updateBossDetails() {
-            const bossDetails = document.getElementById('bossDetails');
-            
-            if (selectedBosses.length === 0) {
-                bossDetails.classList.remove('active');
-                bossDetails.innerHTML = '';
-                updateTotalRewardsPanel();
-                return;
-            }
-
-            bossDetails.classList.add('active');
-            
-            selectedBosses.forEach(bossId => {
-                const existingSection = document.getElementById(`boss-section-${bossId}`);
-                if (!existingSection) {
-                    const bossName = document.querySelector(`#${bossId}`).closest('.boss-item').querySelector('.boss-name').textContent;
-                    const bossSection = createBossSection(bossId, bossName);
-                    bossDetails.appendChild(bossSection);
-                    
-                    if (!bossData[bossId]) {
-                        bossData[bossId] = {
-                            name: bossName,
-                            data: { members: [] },
-                            active: true
-                        };
-                    }
-                }
-            });
-            
-            const allSections = bossDetails.querySelectorAll('.boss-section');
-            allSections.forEach(section => {
-                const sectionBossId = section.id.replace('boss-section-', '');
-                if (!selectedBosses.includes(sectionBossId)) {
-                    section.remove();
-                    if (bossData[sectionBossId]) {
-                        bossData[sectionBossId].active = false;
-                    }
-                }
-            });
-
-            updateTotalRewardsPanel();
-        }
-
-        function createBossSection(bossId, bossName) {
-            const section = document.createElement('div');
-            section.className = 'boss-section';
-            section.id = `boss-section-${bossId}`;
-            section.innerHTML = `
-                <div class="boss-header" onclick="toggleBossPanel('${bossId}')">
-                    <div>
-                        <h3>${bossName}</h3>
-                        <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.9;">Date: ${new Date().toLocaleDateString()}</p>
-                    </div>
-                    <span class="boss-toggle" id="toggle-${bossId}">▼</span>
-                </div>
-                <div class="boss-content expanded" id="content-${bossId}">
-                    <div class="party-section">
-                        <h4>Party Members</h4>
-                        <button class="btn btn-primary" onclick="addPartyMember('${bossId}')">Add Party Member</button>
-                        <div id="party-${bossId}" class="party-members"></div>
-                    </div>
-                    <div class="distribution-section">
-                        <div class="total-value" id="total-${bossId}">Total Value: 0 NESO</div>
-                        <div class="distribution-grid" id="distribution-${bossId}"></div>
-                    </div>
-                </div>
-            `;
-            
-            if (bossData[bossId] && bossData[bossId].data && bossData[bossId].data.members) {
-                setTimeout(() => restoreBossData(bossId), 10);
-            }
-            
-            return section;
-        }
-
-        function toggleBossPanel(bossId) {
-            const content = document.getElementById(`content-${bossId}`);
-            const toggle = document.getElementById(`toggle-${bossId}`);
-            
-            if (content.classList.contains('collapsed')) {
-                content.classList.remove('collapsed');
-                content.classList.add('expanded');
-                toggle.textContent = '▼';
-            } else {
-                content.classList.remove('expanded');
-                content.classList.add('collapsed');
-                toggle.textContent = '▶';
-            }
         }
 
         function addPartyMember(bossId) {
@@ -823,15 +742,15 @@
                 <div class="member-info">
                     <div class="input-group">
                         <label>Character Name:</label>
-                        <input type="text" placeholder="Enter character name" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
+                        <input type="text" placeholder="Enter character name" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                     </div>
                     <div class="input-group">
                         <label>Wallet Address:</label>
-                        <input type="text" placeholder="0x..." oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
+                        <input type="text" placeholder="0x..." oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                     </div>
                     <div class="input-group">
                         <label>Share %:</label>
-                        <input type="number" value="0" min="0" max="100" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
+                        <input type="number" value="0" min="0" max="100" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                     </div>
                 </div>
                 <div class="reward-input">
@@ -844,7 +763,7 @@
             
             partyContainer.appendChild(memberDiv);
             updateEvenDistribution(bossId);
-            saveBossData(bossId);
+            debouncedSave(bossId, 500); // Quick save for new member
         }
 
         function addReward(memberId) {
@@ -856,33 +775,33 @@
             rewardDiv.className = 'reward-row';
             rewardDiv.id = rewardId;
             rewardDiv.innerHTML = `
-                <input type="text" placeholder="Item Name" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
-                <input type="number" placeholder="Quantity" min="1" value="1" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
-                <input type="number" placeholder="NESO per item" min="0" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
+                <input type="text" placeholder="Item Name" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                <input type="number" placeholder="Quantity" min="1" value="1" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                <input type="number" placeholder="NESO per item" min="0" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
                 <button class="remove-btn" onclick="removeReward('${rewardId}', '${memberId}')">×</button>
             `;
             
             rewardsContainer.appendChild(rewardDiv);
-            calculateRewards(memberId);
-            saveBossData(bossId);
+            calculateRewardsOnly(memberId);
+            debouncedSave(bossId, 500);
         }
 
         function removeReward(rewardId, memberId) {
             const bossId = memberId.split('-').slice(1, -1).join('-');
             document.getElementById(rewardId).remove();
-            calculateRewards(memberId);
-            saveBossData(bossId);
+            calculateRewardsOnly(memberId);
+            debouncedSave(bossId, 200);
         }
 
         function removeMember(memberId, bossId) {
             document.getElementById(memberId).remove();
             updateEvenDistribution(bossId);
-            saveBossData(bossId);
+            debouncedSave(bossId, 200);
         }
 
-        function calculateRewards(memberId) {
+        function calculateRewardsOnly(memberId) {
             const bossId = memberId.split('-').slice(1, -1).join('-');
-            updateDistribution(bossId);
+            updateDistributionOnly(bossId);
         }
 
         function updateEvenDistribution(bossId) {
@@ -899,126 +818,11 @@
                 shareInput.value = evenShare + (index < remainder ? 1 : 0);
             });
             
-            updateDistribution(bossId);
+            updateDistributionOnly(bossId);
         }
 
-        // Data persistence and real-time sync
-        async function saveBossData(bossId) {
-            const partyContainer = document.getElementById(`party-${bossId}`);
-            if (!partyContainer || !currentRoom) return;
-            
-            const members = partyContainer.querySelectorAll('.party-member');
-            const memberData = [];
-
-            members.forEach(member => {
-                const inputs = member.querySelectorAll('input');
-                const characterName = inputs[0].value;
-                const walletAddress = inputs[1].value;
-                const sharePercentage = inputs[2].value;
-                
-                const rewardRows = member.querySelectorAll('.reward-row');
-                const rewards = [];
-                
-                rewardRows.forEach(row => {
-                    const rewardInputs = row.querySelectorAll('input');
-                    rewards.push({
-                        itemName: rewardInputs[0].value,
-                        quantity: rewardInputs[1].value,
-                        nesoPerItem: rewardInputs[2].value
-                    });
-                });
-                
-                memberData.push({
-                    id: member.id,
-                    characterName,
-                    walletAddress,
-                    sharePercentage,
-                    rewards
-                });
-            });
-
-            const bossName = document.querySelector(`#${bossId}`).closest('.boss-item').querySelector('.boss-name').textContent;
-            
-            if (!bossData[bossId]) {
-                bossData[bossId] = {};
-            }
-            bossData[bossId].data = { members: memberData };
-            bossData[bossId].active = true;
-
-            // Send to server and other clients
-            if (socket && socket.connected) {
-                socket.emit('updateBossData', {
-                    roomCode: currentRoom.code,
-                    bossId,
-                    bossName,
-                    bossData: { members: memberData }
-                });
-            }
-        }
-
-        function restoreBossData(bossId) {
-            if (!bossData[bossId] || !bossData[bossId].data || !bossData[bossId].data.members) return;
-            
-            const partyContainer = document.getElementById(`party-${bossId}`);
-            if (!partyContainer) return;
-
-            // Clear existing members
-            partyContainer.innerHTML = '';
-
-            bossData[bossId].data.members.forEach(memberData => {
-                const memberId = memberData.id || `member-${bossId}-${Date.now()}`;
-                
-                const memberDiv = document.createElement('div');
-                memberDiv.className = 'party-member';
-                memberDiv.id = memberId;
-                memberDiv.innerHTML = `
-                    <div class="member-info">
-                        <div class="input-group">
-                            <label>Character Name:</label>
-                            <input type="text" placeholder="Enter character name" value="${memberData.characterName || ''}" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
-                        </div>
-                        <div class="input-group">
-                            <label>Wallet Address:</label>
-                            <input type="text" placeholder="0x..." value="${memberData.walletAddress || ''}" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
-                        </div>
-                        <div class="input-group">
-                            <label>Share %:</label>
-                            <input type="number" value="${memberData.sharePercentage || 0}" min="0" max="100" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
-                        </div>
-                    </div>
-                    <div class="reward-input">
-                        <h5>Rewards:</h5>
-                        <div class="reward-rows" id="rewards-${memberId}"></div>
-                        <button class="add-reward-btn" onclick="addReward('${memberId}')">Add Reward</button>
-                    </div>
-                    <button class="remove-btn" onclick="removeMember('${memberId}', '${bossId}')" style="margin-top: 10px;">Remove Member</button>
-                `;
-                
-                partyContainer.appendChild(memberDiv);
-                
-                if (memberData.rewards && memberData.rewards.length > 0) {
-                    const rewardsContainer = document.getElementById(`rewards-${memberId}`);
-                    memberData.rewards.forEach(reward => {
-                        const rewardId = `reward-${Date.now()}-${Math.random()}`;
-                        const rewardDiv = document.createElement('div');
-                        rewardDiv.className = 'reward-row';
-                        rewardDiv.id = rewardId;
-                        rewardDiv.innerHTML = `
-                            <input type="text" placeholder="Item Name" value="${reward.itemName || ''}" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
-                            <input type="number" placeholder="Quantity" min="1" value="${reward.quantity || 1}" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
-                            <input type="number" placeholder="NESO per item" min="0" value="${reward.nesoPerItem || 0}" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
-                            <button class="remove-btn" onclick="removeReward('${rewardId}', '${memberId}')">×</button>
-                        `;
-                        rewardsContainer.appendChild(rewardDiv);
-                    });
-                }
-            });
-            
-            updateDistribution(bossId);
-        }
-
-        // Distribution calculation
-        function updateDistribution(bossId) {
+        // New function that only updates distribution without triggering re-renders
+        function updateDistributionOnly(bossId) {
             const partyContainer = document.getElementById(`party-${bossId}`);
             const members = partyContainer.querySelectorAll('.party-member');
             
@@ -1099,297 +903,7 @@
 
             updateTotalRewardsPanel();
         }
-
-        function calculateTransfers(memberData, totalValue) {
-            const transfers = [];
-            const creditors = [];
-            const debtors = [];
-
-            memberData.forEach(member => {
-                const shouldReceive = Math.floor((totalValue * member.percentage) / 100);
-                const deficit = shouldReceive - member.earnedValue;
-                
-                if (deficit > 0) {
-                    creditors.push({ name: member.name, amount: deficit });
-                } else if (deficit < 0) {
-                    debtors.push({ name: member.name, amount: Math.abs(deficit) });
-                }
-            });
-
-            let creditorIndex = 0;
-            let debtorIndex = 0;
-
-            while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
-                const creditor = creditors[creditorIndex];
-                const debtor = debtors[debtorIndex];
-                
-                const transferAmount = Math.min(creditor.amount, debtor.amount);
-                
-                if (transferAmount > 0) {
-                    transfers.push({
-                        from: debtor.name || 'Unnamed',
-                        to: creditor.name || 'Unnamed',
-                        amount: transferAmount
-                    });
-                }
-                
-                creditor.amount -= transferAmount;
-                debtor.amount -= transferAmount;
-                
-                if (creditor.amount === 0) creditorIndex++;
-                if (debtor.amount === 0) debtorIndex++;
-            }
-
-            return transfers;
-        }
-
-        // Total rewards panel functions
-        function updateTotalRewardsPanel() {
-            const totalPanel = document.getElementById('totalRewardsPanel');
-            
-            if (selectedBosses.length < 2) {
-                totalPanel.classList.add('hidden');
-                return;
-            }
-
-            totalPanel.classList.remove('hidden');
-            calculateTotalRewards();
-        }
-
-        function toggleTotalPanel() {
-            const content = document.getElementById('totalRewardsContent');
-            const toggle = document.getElementById('totalPanelToggle');
-            
-            if (content.classList.contains('collapsed')) {
-                content.classList.remove('collapsed');
-                toggle.textContent = '▼';
-            } else {
-                content.classList.add('collapsed');
-                toggle.textContent = '▶';
-            }
-        }
-
-        function calculateTotalRewards() {
-            const allMembers = new Map();
-            let grandTotal = 0;
-
-            selectedBosses.forEach(bossId => {
-                const partyContainer = document.getElementById(`party-${bossId}`);
-                if (!partyContainer) return;
-
-                const members = partyContainer.querySelectorAll('.party-member');
-                let bossTotal = 0;
-
-                members.forEach(member => {
-                    const characterName = member.querySelector('input[type="text"]').value.trim();
-                    const walletAddress = member.querySelectorAll('input[type="text"]')[1].value.trim();
-                    const sharePercentage = parseInt(member.querySelector('input[type="number"]').value) || 0;
-                    
-                    const rewardRows = member.querySelectorAll('.reward-row');
-                    let memberEarnedValue = 0;
-                    
-                    rewardRows.forEach(row => {
-                        const inputs = row.querySelectorAll('input');
-                        const quantity = parseInt(inputs[1].value) || 0;
-                        const nesoPerItem = parseInt(inputs[2].value) || 0;
-                        memberEarnedValue += quantity * nesoPerItem;
-                    });
-
-                    bossTotal += memberEarnedValue;
-
-                    if (characterName) {
-                        const memberKey = characterName.toLowerCase();
-                        
-                        if (!allMembers.has(memberKey)) {
-                            allMembers.set(memberKey, {
-                                displayName: characterName,
-                                wallet: walletAddress,
-                                bosses: new Map(),
-                                totalEarned: 0,
-                                totalShouldReceive: 0
-                            });
-                        }
-
-                        const memberData = allMembers.get(memberKey);
-                        
-                        if (!memberData.wallet && walletAddress) {
-                            memberData.wallet = walletAddress;
-                        }
-
-                        const shouldReceive = Math.floor((bossTotal * sharePercentage) / 100);
-                        memberData.bosses.set(bossId, {
-                            earned: memberEarnedValue,
-                            shouldReceive: shouldReceive,
-                            percentage: sharePercentage,
-                            bossTotal: bossTotal
-                        });
-                    }
-                });
-
-                grandTotal += bossTotal;
-            });
-
-            allMembers
-            allMembers.forEach((memberData, memberKey) => {
-                memberData.totalEarned = 0;
-                memberData.totalShouldReceive = 0;
-
-                memberData.bosses.forEach((bossData, bossId) => {
-                    const partyContainer = document.getElementById(`party-${bossId}`);
-                    if (!partyContainer) return;
-
-                    const members = partyContainer.querySelectorAll('.party-member');
-                    let bossTotal = 0;
-
-                    members.forEach(member => {
-                        const rewardRows = member.querySelectorAll('.reward-row');
-                        rewardRows.forEach(row => {
-                            const inputs = row.querySelectorAll('input');
-                            const quantity = parseInt(inputs[1].value) || 0;
-                            const nesoPerItem = parseInt(inputs[2].value) || 0;
-                            bossTotal += quantity * nesoPerItem;
-                        });
-                    });
-
-                    const shouldReceive = Math.floor((bossTotal * bossData.percentage) / 100);
-                    bossData.shouldReceive = shouldReceive;
-                    bossData.bossTotal = bossTotal;
-
-                    memberData.totalEarned += bossData.earned;
-                    memberData.totalShouldReceive += shouldReceive;
-                });
-            });
-
-            displayTotalRewards(allMembers, grandTotal);
-        }
-
-        function displayTotalRewards(allMembers, grandTotal) {
-            document.getElementById('grandTotalValue').textContent = `Grand Total: ${grandTotal} NESO`;
-
-            const distributionGrid = document.getElementById('totalDistributionGrid');
-            distributionGrid.innerHTML = '';
-
-            const transferData = [];
-
-            allMembers.forEach((memberData, memberKey) => {
-                const deficit = memberData.totalShouldReceive - memberData.totalEarned;
-                
-                const memberDiv = document.createElement('div');
-                memberDiv.className = 'total-distribution-item';
-                
-                let bossBreakdown = '';
-                memberData.bosses.forEach((bossData, bossId) => {
-                    const bossName = document.querySelector(`#${bossId}`).closest('.boss-item').querySelector('.boss-name').textContent;
-                    bossBreakdown += `
-                        <div class="boss-breakdown-item">
-                            <span>${bossName}:</span>
-                            <span>Earned ${bossData.earned}, Should get ${bossData.shouldReceive} (${bossData.percentage}%)</span>
-                        </div>
-                    `;
-                });
-
-                memberDiv.innerHTML = `
-                    <h5>${memberData.displayName}</h5>
-                    <p><strong>Total Earned:</strong> ${memberData.totalEarned} NESO</p>
-                    <p><strong>Total Should Receive:</strong> ${memberData.totalShouldReceive} NESO</p>
-                    <p style="color: ${deficit > 0 ? 'green' : deficit < 0 ? 'red' : 'black'}; font-weight: bold;">
-                        ${deficit > 0 ? `Needs: +${deficit} NESO` : deficit < 0 ? `Owes: ${Math.abs(deficit)} NESO` : 'Balanced ✓'}
-                    </p>
-                    <div class="boss-breakdown">
-                        <strong>Boss Breakdown:</strong>
-                        ${bossBreakdown}
-                    </div>
-                    <p style="font-size: 0.8em; word-break: break-all; color: #6c757d;">
-                        ${memberData.wallet || 'No wallet address'}
-                    </p>
-                `;
-                
-                distributionGrid.appendChild(memberDiv);
-
-                transferData.push({
-                    name: memberData.displayName,
-                    wallet: memberData.wallet,
-                    deficit: deficit
-                });
-            });
-
-            displayOptimizedTransfers(transferData);
-        }
-
-        function displayOptimizedTransfers(transferData) {
-            const transfersContainer = document.getElementById('totalTransfers');
-            
-            const creditors = transferData.filter(member => member.deficit > 0);
-            const debtors = transferData.filter(member => member.deficit < 0);
-
-            if (creditors.length === 0 && debtors.length === 0) {
-                transfersContainer.innerHTML = '<h4>💰 All members are balanced! No transfers needed.</h4>';
-                return;
-            }
-
-            const transfers = [];
-            let creditorIndex = 0;
-            let debtorIndex = 0;
-
-            const creditorsCopy = creditors.map(c => ({ ...c, amount: c.deficit }));
-            const debtorsCopy = debtors.map(d => ({ ...d, amount: Math.abs(d.deficit) }));
-
-            while (creditorIndex < creditorsCopy.length && debtorIndex < debtorsCopy.length) {
-                const creditor = creditorsCopy[creditorIndex];
-                const debtor = debtorsCopy[debtorIndex];
-                
-                const transferAmount = Math.min(creditor.amount, debtor.amount);
-                
-                if (transferAmount > 0) {
-                    transfers.push({
-                        from: debtor.name,
-                        fromWallet: debtor.wallet,
-                        to: creditor.name,
-                        toWallet: creditor.wallet,
-                        amount: transferAmount
-                    });
-                }
-                
-                creditor.amount -= transferAmount;
-                debtor.amount -= transferAmount;
-                
-                if (creditor.amount === 0) creditorIndex++;
-                if (debtor.amount === 0) debtorIndex++;
-            }
-
-            let transfersHTML = '<h4>💸 Optimized Transfer Instructions:</h4>';
-            
-            if (transfers.length === 0) {
-                transfersHTML += '<p>No transfers needed - all members are balanced!</p>';
-            } else {
-                transfers.forEach(transfer => {
-                    transfersHTML += `
-                        <div style="background: white; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #28a745;">
-                            <strong>${transfer.from}</strong> → <strong>${transfer.to}</strong>: <span style="color: #28a745; font-weight: bold;">${transfer.amount} NESO</span><br>
-                            <small style="color: #6c757d;">
-                                From: ${transfer.fromWallet || 'No wallet'}<br>
-                                To: ${transfer.toWallet || 'No wallet'}
-                            </small>
-                        </div>
-                    `;
-                });
-            }
-
-            transfersContainer.innerHTML = transfersHTML;
-        }
-
-        // Initialize everything
-        window.addEventListener('load', () => {
-            initializeSocket();
-            
-            document.getElementById('createRoom').classList.remove('hidden');
-            document.getElementById('joinRoom').classList.remove('hidden');
-
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('room')) {
-                document.getElementById('joinCode').value = urlParams.get('room');
-            }
-        });
+        
     </script>
 </body>
 </html>
