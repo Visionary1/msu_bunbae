@@ -695,104 +695,81 @@ async function createRoom() {
         }
 
         async function loadBossData() {
-            console.log(`🔍 Loading boss data for room: ${currentRoom.code}`);
-            
-            // Suppress socket updates during initial loading
-            suppressSocketUpdates = true;
-            console.log(`🚫 Socket updates suppressed during loading`);
+            console.log(`🚀 STARTING loadBossData for room: ${currentRoom.code}`);
             
             try {
-                console.log(`📡 Fetching data from: /api/rooms/${currentRoom.code}/boss-data`);
-                const response = await fetch(`/api/rooms/${currentRoom.code}/boss-data`);
+                const url = `/api/rooms/${currentRoom.code}/boss-data`;
+                console.log(`📡 Fetching from: ${url}`);
                 
-                console.log(`📋 Response status: ${response.status} ${response.statusText}`);
+                const response = await fetch(url);
+                console.log(`📋 Response status: ${response.status}`);
                 
                 if (response.ok) {
                     const serverBossData = await response.json();
-                    console.log(`📦 Raw server boss data:`, serverBossData);
+                    console.log(`📦 SERVER RETURNED:`, serverBossData);
                     
-                    // Check if we actually have any data
-                    const hasData = Object.keys(serverBossData).length > 0;
-                    console.log(`❓ Has server data: ${hasData}`);
-                    
-                    if (hasData) {
-                        console.log(`📊 Processing ${Object.keys(serverBossData).length} bosses from server`);
-                        
-                        // First, update the bossData object
-                        Object.keys(serverBossData).forEach(bossId => {
-                            console.log(`🏆 Processing boss: ${bossId}`);
-                            
-                            bossData[bossId] = {
-                                name: serverBossData[bossId].name,
-                                data: serverBossData[bossId].data,
-                                active: true
-                            };
-                            
-                            const memberCount = bossData[bossId].data?.members?.length || 0;
-                            console.log(`👥 Boss ${bossId} has ${memberCount} members`);
-                            console.log(`📋 Boss ${bossId} data:`, bossData[bossId].data);
-                            
-                            // Update checkbox selection
-                            const checkbox = document.getElementById(bossId);
-                            if (checkbox) {
-                                if (!checkbox.checked) {
-                                    console.log(`☑️ Checking boss checkbox: ${bossId}`);
-                                    checkbox.checked = true;
-                                    const bossItem = checkbox.closest('.boss-item');
-                                    bossItem.classList.add('selected');
-                                    if (!selectedBosses.includes(bossId)) {
-                                        selectedBosses.push(bossId);
-                                    }
-                                } else {
-                                    console.log(`✅ Boss checkbox already checked: ${bossId}`);
-                                }
-                            } else {
-                                console.error(`❌ Checkbox not found for boss: ${bossId}`);
-                            }
+                    // Check what we got
+                    Object.keys(serverBossData).forEach(bossId => {
+                        const boss = serverBossData[bossId];
+                        console.log(`🏆 Boss ${bossId}:`, {
+                            name: boss.name,
+                            memberCount: boss.data?.members?.length || 0,
+                            members: boss.data?.members || []
                         });
                         
-                        console.log(`📋 Selected bosses after processing:`, selectedBosses);
-                        console.log(`📋 Complete bossData object:`, bossData);
-                        
-                        // Now update the boss details display
-                        console.log(`🔄 Updating boss details display...`);
-                        updateBossDetails();
-                        
-                        // After the DOM is updated, restore all the boss data
-                        setTimeout(() => {
-                            console.log(`🔄 Starting boss data restoration...`);
-                            Object.keys(serverBossData).forEach((bossId, index) => {
-                                console.log(`⏰ Scheduling restore for boss: ${bossId} (index: ${index})`);
-                                setTimeout(() => {
-                                    console.log(`🚀 Executing restore for boss: ${bossId}`);
-                                    restoreBossData(bossId);
-                                }, index * 150); // Stagger the restoration
+                        // Show each member
+                        if (boss.data?.members) {
+                            boss.data.members.forEach((member, idx) => {
+                                console.log(`  👤 Member ${idx}:`, {
+                                    name: member.characterName,
+                                    wallet: member.walletAddress,
+                                    share: member.sharePercentage,
+                                    rewards: member.rewards
+                                });
                             });
-                            
-                            // Re-enable socket updates after restoration is complete
-                            const restoreDelay = Object.keys(serverBossData).length * 150 + 300;
-                            console.log(`⏰ Will re-enable socket updates in ${restoreDelay}ms`);
-                            setTimeout(() => {
-                                suppressSocketUpdates = false;
-                                dataLoadingComplete = true;
-                                console.log(`✅ Data loading complete, socket updates re-enabled`);
-                            }, restoreDelay);
-                        }, 400);
-                    } else {
-                        // No data to load
-                        suppressSocketUpdates = false;
+                        }
+                    });
+                    
+                    // Store the data
+                    Object.keys(serverBossData).forEach(bossId => {
+                        bossData[bossId] = {
+                            name: serverBossData[bossId].name,
+                            data: serverBossData[bossId].data,
+                            active: true
+                        };
+                        
+                        // Check boss checkbox
+                        const checkbox = document.getElementById(bossId);
+                        if (checkbox && !checkbox.checked) {
+                            checkbox.checked = true;
+                            const bossItem = checkbox.closest('.boss-item');
+                            bossItem.classList.add('selected');
+                            if (!selectedBosses.includes(bossId)) {
+                                selectedBosses.push(bossId);
+                            }
+                        }
+                    });
+                    
+                    console.log(`📋 Updated bossData:`, bossData);
+                    console.log(`📋 Selected bosses:`, selectedBosses);
+                    
+                    // Update UI
+                    updateBossDetails();
+                    
+                    // Restore data after UI is ready
+                    setTimeout(() => {
+                        Object.keys(serverBossData).forEach(bossId => {
+                            console.log(`🔄 Restoring ${bossId}...`);
+                            restoreBossData(bossId);
+                        });
                         dataLoadingComplete = true;
-                        console.log(`ℹ️ No server data found, loading complete`);
-                    }
+                    }, 500);
+                    
                 } else {
-                    console.error(`❌ Failed to fetch boss data: ${response.status} ${response.statusText}`);
-                    suppressSocketUpdates = false;
-                    dataLoadingComplete = true;
+                    console.error(`❌ Server error: ${response.status}`);
                 }
             } catch (error) {
-                console.error(`💥 Error loading boss data:`, error);
-                suppressSocketUpdates = false;
-                dataLoadingComplete = true;
+                console.error(`💥 Load error:`, error);
             }
         }
 
