@@ -1,0 +1,19 @@
+{
+  "name": "maplestory-boss-tracker",
+  "version": "1.0.0",
+  "description": "MapleStory Boss Reward Tracker with real-time collaboration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "socket.io": "^4.7.2"
+  },
+  "keywords": ["maplestory", "boss", "tracker", "reward"],
+  "author": "MapleStory Player",
+  "license": "MIT"
+}
