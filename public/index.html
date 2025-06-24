@@ -1126,6 +1126,8 @@ async function saveBossData(bossId) {
             bossData[bossId].data = { members: memberData };
             bossData[bossId].active = true;
 
+            console.log(`Saving boss data for ${bossId}:`, memberData);
+
             // Send to server and other clients
             if (socket && socket.connected) {
                 socket.emit('updateBossData', {
@@ -1148,7 +1150,6 @@ async function saveBossData(bossId) {
             const partyContainer = document.getElementById(`party-${bossId}`);
             if (!partyContainer) {
                 console.log(`Party container not found for boss: ${bossId}, waiting...`);
-                // Try again after a short delay
                 setTimeout(() => restoreBossData(bossId), 100);
                 return;
             }
@@ -1208,10 +1209,12 @@ async function saveBossData(bossId) {
                 }
             });
             
-            // Update the distribution after restoring all data
+            // ✅ THIS IS THE KEY FIX: Save the data after restoring it
             setTimeout(() => {
                 updateDistribution(bossId);
-            }, 10);
+                // Save the restored data to the server so other users can see it
+                saveBossData(bossId);
+            }, 50);
         }
 
         // Distribution calculation
