@@ -428,7 +428,6 @@
         }
     </style>
 </head>
-
 <body>
     <div class="connection-status" id="connectionStatus">
         <span id="statusText">Connecting...</span>
@@ -549,75 +548,76 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
 
-let currentRoom = null;
-        let selectedBosses = [];
-        let partyMembers = [];
-        let bossData = {};
-        let socket = null;
-        let saveTimeouts = {}; // For debouncing saves
-
-        // Debounced save function to prevent focus loss
-        function debouncedSave(bossId, delay = 1000) {
-            // Clear existing timeout for this boss
-            if (saveTimeouts[bossId]) {
-                clearTimeout(saveTimeouts[bossId]);
-            }
-            
-            // Set new timeout
-            saveTimeouts[bossId] = setTimeout(() => {
-                saveBossData(bossId);
-            }, delay);
-        }
-
-        // Initialize Socket.IO connection
-        function initializeSocket() {
-            socket = io();
-            
-            socket.on('connect', () => {
-                updateConnectionStatus('connected');
-                if (currentRoom) {
-                    socket.emit('joinRoom', currentRoom.code);
-                }
-            });
-            
-            socket.on('disconnect', () => {
-                updateConnectionStatus('disconnected');
-            });
-            
-            socket.on('bossDataUpdated', (data) => {
-                // Only update if the data is different to prevent unnecessary re-renders
-                if (!bossData[data.bossId] || JSON.stringify(bossData[data.bossId].data) !== JSON.stringify(data.data)) {
-                    bossData[data.bossId] = {
-                        name: data.bossName,
-                        data: data.data,
-                        active: true
-                    };
+        let currentRoom = null;
+                let selectedBosses = [];
+                let partyMembers = [];
+                let bossData = {};
+                let socket = null;
+                let saveTimeouts = {}; // For debouncing saves
+                let dataLoadingComplete = false; // Track if initial data loading is complete
+        
+                // Debounced save function to prevent focus loss
+                function debouncedSave(bossId, delay = 1000) {
+                    // Clear existing timeout for this boss
+                    if (saveTimeouts[bossId]) {
+                        clearTimeout(saveTimeouts[bossId]);
+                    }
                     
-                    if (selectedBosses.includes(data.bossId)) {
-                        setTimeout(() => {
-                            restoreBossData(data.bossId);
-                            updateDistribution(data.bossId);
-                            updateTotalRewardsPanel();
-                        }, 100);
+                    // Set new timeout
+                    saveTimeouts[bossId] = setTimeout(() => {
+                        saveBossData(bossId);
+                    }, delay);
+                }
+        
+                // Initialize Socket.IO connection
+                function initializeSocket() {
+                    socket = io();
+                    
+                    socket.on('connect', () => {
+                        updateConnectionStatus('connected');
+                        if (currentRoom) {
+                            socket.emit('joinRoom', currentRoom.code);
+                        }
+                    });
+                    
+                    socket.on('disconnect', () => {
+                        updateConnectionStatus('disconnected');
+                    });
+                    
+                    socket.on('bossDataUpdated', (data) => {
+                        // Only update if the data is different and we've completed initial loading
+                        if (dataLoadingComplete && (!bossData[data.bossId] || JSON.stringify(bossData[data.bossId].data) !== JSON.stringify(data.data))) {
+                            bossData[data.bossId] = {
+                                name: data.bossName,
+                                data: data.data,
+                                active: true
+                            };
+                            
+                            if (selectedBosses.includes(data.bossId)) {
+                                setTimeout(() => {
+                                    restoreBossData(data.bossId);
+                                    updateDistribution(data.bossId);
+                                    updateTotalRewardsPanel();
+                                }, 100);
+                            }
+                        }
+                    });
+                }
+        
+                function updateConnectionStatus(status) {
+                    const statusElement = document.getElementById('connectionStatus');
+                    const statusText = document.getElementById('statusText');
+                    
+                    if (status === 'connected') {
+                        statusElement.className = 'connection-status status-connected';
+                        statusText.textContent = '● Connected';
+                    } else {
+                        statusElement.className = 'connection-status status-disconnected';
+                        statusText.textContent = '● Disconnected';
                     }
                 }
-            });
-        }
 
-        function updateConnectionStatus(status) {
-            const statusElement = document.getElementById('connectionStatus');
-            const statusText = document.getElementById('statusText');
-            
-            if (status === 'connected') {
-                statusElement.className = 'connection-status status-connected';
-                statusText.textContent = '● Connected';
-            } else {
-                statusElement.className = 'connection-status status-disconnected';
-                statusText.textContent = '● Disconnected';
-            }
-        }
-
-        // Room management
+                // Room management
         async function createRoom() {
             const roomName = document.getElementById('roomName').value.trim();
             if (!roomName) {
@@ -638,6 +638,7 @@ let currentRoom = null;
                     currentRoom = await response.json();
                     showRoom();
                     socket.emit('joinRoom', currentRoom.code);
+                    dataLoadingComplete = true; // New room, no data to load
                 } else {
                     alert('Failed to create room');
                 }
@@ -672,11 +673,15 @@ let currentRoom = null;
         }
 
         async function loadBossData() {
+            console.log('Loading boss data for room:', currentRoom.code);
+            
             try {
                 const response = await fetch(`/api/rooms/${currentRoom.code}/boss-data`);
                 if (response.ok) {
                     const serverBossData = await response.json();
+                    console.log('Loaded server boss data:', serverBossData);
                     
+                    // First, update the bossData object
                     Object.keys(serverBossData).forEach(bossId => {
                         bossData[bossId] = {
                             name: serverBossData[bossId].name,
@@ -684,6 +689,7 @@ let currentRoom = null;
                             active: true
                         };
                         
+                        // Update checkbox selection
                         const checkbox = document.getElementById(bossId);
                         if (checkbox && !checkbox.checked) {
                             checkbox.checked = true;
@@ -695,10 +701,21 @@ let currentRoom = null;
                         }
                     });
                     
+                    // Now update the boss details display
                     updateBossDetails();
+                    
+                    // After the DOM is updated, restore all the boss data
+                    setTimeout(() => {
+                        Object.keys(serverBossData).forEach(bossId => {
+                            console.log(`Restoring data for boss: ${bossId}`);
+                            restoreBossData(bossId);
+                        });
+                        dataLoadingComplete = true; // Mark loading as complete
+                    }, 100);
                 }
             } catch (error) {
                 console.error('Error loading boss data:', error);
+                dataLoadingComplete = true; // Mark as complete even on error
             }
         }
 
@@ -818,8 +835,12 @@ let currentRoom = null;
                 </div>
             `;
             
+            // If we have data for this boss, schedule restoration after DOM is ready
             if (bossData[bossId] && bossData[bossId].data && bossData[bossId].data.members) {
-                setTimeout(() => restoreBossData(bossId), 10);
+                setTimeout(() => {
+                    console.log(`Scheduling restore for ${bossId}`);
+                    restoreBossData(bossId);
+                }, 50);
             }
             
             return section;
@@ -1013,6 +1034,49 @@ let currentRoom = null;
             updateTotalRewardsPanel();
         }
 
+        function calculateTransfers(memberData, totalValue) {
+            const transfers = [];
+            const creditors = [];
+            const debtors = [];
+
+            memberData.forEach(member => {
+                const shouldReceive = Math.floor((totalValue * member.percentage) / 100);
+                const deficit = shouldReceive - member.earnedValue;
+                
+                if (deficit > 0) {
+                    creditors.push({ name: member.name, amount: deficit });
+                } else if (deficit < 0) {
+                    debtors.push({ name: member.name, amount: Math.abs(deficit) });
+                }
+            });
+
+            let creditorIndex = 0;
+            let debtorIndex = 0;
+
+            while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
+                const creditor = creditors[creditorIndex];
+                const debtor = debtors[debtorIndex];
+                
+                const transferAmount = Math.min(creditor.amount, debtor.amount);
+                
+                if (transferAmount > 0) {
+                    transfers.push({
+                        from: debtor.name || 'Unnamed',
+                        to: creditor.name || 'Unnamed',
+                        amount: transferAmount
+                    });
+                }
+                
+                creditor.amount -= transferAmount;
+                debtor.amount -= transferAmount;
+                
+                if (creditor.amount === 0) creditorIndex++;
+                if (debtor.amount === 0) debtorIndex++;
+            }
+
+            return transfers;
+        }
+
         // Data persistence and real-time sync
         async function saveBossData(bossId) {
             const partyContainer = document.getElementById(`party-${bossId}`);
@@ -1068,16 +1132,26 @@ let currentRoom = null;
         }
 
         function restoreBossData(bossId) {
-            if (!bossData[bossId] || !bossData[bossId].data || !bossData[bossId].data.members) return;
+            console.log(`Attempting to restore data for boss: ${bossId}`);
+            
+            if (!bossData[bossId] || !bossData[bossId].data || !bossData[bossId].data.members) {
+                console.log(`No data to restore for boss: ${bossId}`);
+                return;
+            }
             
             const partyContainer = document.getElementById(`party-${bossId}`);
-            if (!partyContainer) return;
+            if (!partyContainer) {
+                console.log(`Party container not found for boss: ${bossId}`);
+                return;
+            }
 
-            // Clear existing members
+            console.log(`Restoring ${bossData[bossId].data.members.length} members for boss: ${bossId}`);
+
+            // Clear existing members first
             partyContainer.innerHTML = '';
 
-            bossData[bossId].data.members.forEach(memberData => {
-                const memberId = memberData.id || `member-${bossId}-${Date.now()}`;
+            bossData[bossId].data.members.forEach((memberData, memberIndex) => {
+                const memberId = memberData.id || `member-${bossId}-${Date.now()}-${memberIndex}`;
                 
                 const memberDiv = document.createElement('div');
                 memberDiv.className = 'party-member';
@@ -1086,15 +1160,15 @@ let currentRoom = null;
                     <div class="member-info">
                         <div class="input-group">
                             <label>Character Name:</label>
-                            <input type="text" placeholder="Enter character name" value="${memberData.characterName || ''}" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
+                            <input type="text" placeholder="Enter character name" value="${memberData.characterName || ''}" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                         </div>
                         <div class="input-group">
                             <label>Wallet Address:</label>
-                            <input type="text" placeholder="0x..." value="${memberData.walletAddress || ''}" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
+                            <input type="text" placeholder="0x..." value="${memberData.walletAddress || ''}" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                         </div>
                         <div class="input-group">
                             <label>Share %:</label>
-                            <input type="number" value="${memberData.sharePercentage || 0}" min="0" max="100" oninput="saveBossData('${bossId}'); updateDistribution('${bossId}')">
+                            <input type="number" value="${memberData.sharePercentage || 0}" min="0" max="100" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                         </div>
                     </div>
                     <div class="reward-input">
@@ -1107,17 +1181,18 @@ let currentRoom = null;
                 
                 partyContainer.appendChild(memberDiv);
                 
+                // Restore rewards for this member
                 if (memberData.rewards && memberData.rewards.length > 0) {
                     const rewardsContainer = document.getElementById(`rewards-${memberId}`);
-                    memberData.rewards.forEach(reward => {
-                        const rewardId = `reward-${Date.now()}-${Math.random()}`;
+                    memberData.rewards.forEach((reward, rewardIndex) => {
+                        const rewardId = `reward-${Date.now()}-${memberIndex}-${rewardIndex}`;
                         const rewardDiv = document.createElement('div');
                         rewardDiv.className = 'reward-row';
                         rewardDiv.id = rewardId;
                         rewardDiv.innerHTML = `
-                            <input type="text" placeholder="Item Name" value="${reward.itemName || ''}" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
-                            <input type="number" placeholder="Quantity" min="1" value="${reward.quantity || 1}" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
-                            <input type="number" placeholder="NESO per item" min="0" value="${reward.nesoPerItem || 0}" oninput="saveBossData('${bossId}'); calculateRewards('${memberId}')">
+                            <input type="text" placeholder="Item Name" value="${reward.itemName || ''}" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                            <input type="number" placeholder="Quantity" min="1" value="${reward.quantity || 1}" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                            <input type="number" placeholder="NESO per item" min="0" value="${reward.nesoPerItem || 0}" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
                             <button class="remove-btn" onclick="removeReward('${rewardId}', '${memberId}')">×</button>
                         `;
                         rewardsContainer.appendChild(rewardDiv);
@@ -1125,7 +1200,10 @@ let currentRoom = null;
                 }
             });
             
-            updateDistribution(bossId);
+            // Update the distribution after restoring all data
+            setTimeout(() => {
+                updateDistribution(bossId);
+            }, 10);
         }
 
         // Distribution calculation
@@ -1209,49 +1287,6 @@ let currentRoom = null;
             }
 
             updateTotalRewardsPanel();
-        }
-
-        function calculateTransfers(memberData, totalValue) {
-            const transfers = [];
-            const creditors = [];
-            const debtors = [];
-
-            memberData.forEach(member => {
-                const shouldReceive = Math.floor((totalValue * member.percentage) / 100);
-                const deficit = shouldReceive - member.earnedValue;
-                
-                if (deficit > 0) {
-                    creditors.push({ name: member.name, amount: deficit });
-                } else if (deficit < 0) {
-                    debtors.push({ name: member.name, amount: Math.abs(deficit) });
-                }
-            });
-
-            let creditorIndex = 0;
-            let debtorIndex = 0;
-
-            while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
-                const creditor = creditors[creditorIndex];
-                const debtor = debtors[debtorIndex];
-                
-                const transferAmount = Math.min(creditor.amount, debtor.amount);
-                
-                if (transferAmount > 0) {
-                    transfers.push({
-                        from: debtor.name || 'Unnamed',
-                        to: creditor.name || 'Unnamed',
-                        amount: transferAmount
-                    });
-                }
-                
-                creditor.amount -= transferAmount;
-                debtor.amount -= transferAmount;
-                
-                if (creditor.amount === 0) creditorIndex++;
-                if (debtor.amount === 0) debtorIndex++;
-            }
-
-            return transfers;
         }
 
         // Total rewards panel functions
@@ -1340,7 +1375,6 @@ let currentRoom = null;
                 grandTotal += bossTotal;
             });
 
-            allMembers
             allMembers.forEach((memberData, memberKey) => {
                 memberData.totalEarned = 0;
                 memberData.totalShouldReceive = 0;
