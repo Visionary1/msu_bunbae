@@ -617,8 +617,8 @@
                     }
                 }
 
-                // Room management
-        async function createRoom() {
+// Room management
+async function createRoom() {
             const roomName = document.getElementById('roomName').value.trim();
             if (!roomName) {
                 alert('Please enter a room name');
@@ -704,14 +704,20 @@
                     // Now update the boss details display
                     updateBossDetails();
                     
-                    // After the DOM is updated, restore all the boss data
+                    // After the DOM is updated, restore all the boss data with longer delays
                     setTimeout(() => {
-                        Object.keys(serverBossData).forEach(bossId => {
-                            console.log(`Restoring data for boss: ${bossId}`);
-                            restoreBossData(bossId);
+                        Object.keys(serverBossData).forEach((bossId, index) => {
+                            console.log(`Scheduling restore for boss: ${bossId} with delay ${index * 200}ms`);
+                            setTimeout(() => {
+                                restoreBossData(bossId);
+                            }, index * 200); // Stagger the restoration
                         });
-                        dataLoadingComplete = true; // Mark loading as complete
-                    }, 100);
+                        
+                        // Mark loading as complete after all restorations are scheduled
+                        setTimeout(() => {
+                            dataLoadingComplete = true;
+                        }, Object.keys(serverBossData).length * 200 + 500);
+                    }, 200);
                 }
             } catch (error) {
                 console.error('Error loading boss data:', error);
@@ -1077,8 +1083,8 @@
             return transfers;
         }
 
-        // Data persistence and real-time sync
-        async function saveBossData(bossId) {
+// Data persistence and real-time sync
+async function saveBossData(bossId) {
             const partyContainer = document.getElementById(`party-${bossId}`);
             if (!partyContainer || !currentRoom) return;
             
@@ -1141,7 +1147,9 @@
             
             const partyContainer = document.getElementById(`party-${bossId}`);
             if (!partyContainer) {
-                console.log(`Party container not found for boss: ${bossId}`);
+                console.log(`Party container not found for boss: ${bossId}, waiting...`);
+                // Try again after a short delay
+                setTimeout(() => restoreBossData(bossId), 100);
                 return;
             }
 
