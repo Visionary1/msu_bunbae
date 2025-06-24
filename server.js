@@ -118,33 +118,66 @@ app.post('/api/rooms/:code/boss-data', (req, res) => {
 app.get('/api/rooms/:code/boss-data', (req, res) => {
   const { code } = req.params;
   
-  console.log(`Fetching boss data for room: ${code}`);
+  console.log(`📡 Fetching boss data for room: ${code}`);
   
   db.all('SELECT * FROM boss_data WHERE room_code = ? ORDER BY updated_at DESC', [code], (err, rows) => {
     if (err) {
-      console.error('Error fetching boss data:', err);
+      console.error('❌ Error fetching boss data:', err);
       res.status(500).json({ error: err.message });
       return;
     }
     
+    console.log(`📋 Raw database rows found: ${rows.length}`);
+    rows.forEach((row, index) => {
+      console.log(`📊 Row ${index}:`, {
+        boss_id: row.boss_id,
+        boss_name: row.boss_name,
+        data_length: row.data?.length || 0,
+        raw_data: row.data
+      });
+    });
+    
     const bossData = {};
     rows.forEach(row => {
       try {
+        const parsedData = JSON.parse(row.data);
+        console.log(`🔍 Parsed data for ${row.boss_id}:`, parsedData);
+        
         bossData[row.boss_id] = {
           name: row.boss_name,
-          data: JSON.parse(row.data),
+          data: parsedData,
           updatedAt: row.updated_at
         };
+        
+        console.log(`✅ Boss ${row.boss_id} processed with ${parsedData?.members?.length || 0} members`);
+        if (parsedData?.members) {
+          parsedData.members.forEach((member, memberIndex) => {
+            console.log(`👤 Member ${memberIndex}:`, {
+              characterName: member.characterName,
+              walletAddress: member.walletAddress,
+              sharePercentage: member.sharePercentage,
+              rewardCount: member.rewards?.length || 0
+            });
+            if (member.rewards) {
+              member.rewards.forEach((reward, rewardIndex) => {
+                console.log(`🎁 Reward ${rewardIndex}:`, reward);
+              });
+            }
+          });
+        }
       } catch (parseError) {
-        console.error(`Error parsing data for boss ${row.boss_id}:`, parseError);
+        console.error(`❌ Error parsing data for boss ${row.boss_id}:`, parseError);
+        console.error(`🔍 Raw data that failed to parse:`, row.data);
         // Skip corrupted data
       }
     });
     
-    console.log(`Found ${Object.keys(bossData).length} bosses for room ${code}`);
-    console.log('Boss data summary:', Object.keys(bossData).map(bossId => ({
+    console.log(`📦 Final boss data object keys: [${Object.keys(bossData).join(', ')}]`);
+    console.log(`📊 Boss data summary:`, Object.keys(bossData).map(bossId => ({
       bossId,
-      memberCount: bossData[bossId].data?.members?.length || 0
+      memberCount: bossData[bossId].data?.members?.length || 0,
+      hasMembers: !!bossData[bossId].data?.members,
+      firstMemberName: bossData[bossId].data?.members?.[0]?.characterName || 'none'
     })));
     
     res.json(bossData);
