@@ -55,9 +55,11 @@ app.post('/api/rooms', (req, res) => {
   
   db.run('INSERT INTO rooms (code, name) VALUES (?, ?)', [code, name], function(err) {
     if (err) {
+      console.error('Error creating room:', err);
       res.status(500).json({ error: err.message });
       return;
     }
+    console.log(`Created room: ${code} - ${name}`);
     res.json({ code, name, id: this.lastID });
   });
 });
@@ -68,30 +70,38 @@ app.get('/api/rooms/:code', (req, res) => {
   
   db.get('SELECT * FROM rooms WHERE code = ?', [code], (err, row) => {
     if (err) {
+      console.error('Error fetching room:', err);
       res.status(500).json({ error: err.message });
       return;
     }
     if (!row) {
+      console.log(`Room not found: ${code}`);
       res.status(404).json({ error: 'Room not found' });
       return;
     }
+    console.log(`Room found: ${code} - ${row.name}`);
     res.json(row);
   });
 });
 
-// Save boss data
+// Save boss data (HTTP endpoint - backup method)
 app.post('/api/rooms/:code/boss-data', (req, res) => {
   const { code } = req.params;
   const { bossId, bossName, data } = req.body;
+  
+  console.log(`HTTP: Saving boss data for room ${code}, boss ${bossId}`);
   
   const query = `INSERT OR REPLACE INTO boss_data (room_code, boss_id, boss_name, data, updated_at) 
                  VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`;
   
   db.run(query, [code, bossId, bossName, JSON.stringify(data)], function(err) {
     if (err) {
+      console.error('HTTP: Database error saving boss data:', err);
       res.status(500).json({ error: err.message });
       return;
     }
+    
+    console.log(`HTTP: Successfully saved boss data for ${bossId} in room ${code}`);
     
     // Emit real-time update to all clients in this room
     io.to(`room_${code}`).emit('bossDataUpdated', {
@@ -108,20 +118,34 @@ app.post('/api/rooms/:code/boss-data', (req, res) => {
 app.get('/api/rooms/:code/boss-data', (req, res) => {
   const { code } = req.params;
   
+  console.log(`Fetching boss data for room: ${code}`);
+  
   db.all('SELECT * FROM boss_data WHERE room_code = ? ORDER BY updated_at DESC', [code], (err, rows) => {
     if (err) {
+      console.error('Error fetching boss data:', err);
       res.status(500).json({ error: err.message });
       return;
     }
     
     const bossData = {};
     rows.forEach(row => {
-      bossData[row.boss_id] = {
-        name: row.boss_name,
-        data: JSON.parse(row.data),
-        updatedAt: row.updated_at
-      };
+      try {
+        bossData[row.boss_id] = {
+          name: row.boss_name,
+          data: JSON.parse(row.data),
+          updatedAt: row.updated_at
+        };
+      } catch (parseError) {
+        console.error(`Error parsing data for boss ${row.boss_id}:`, parseError);
+        // Skip corrupted data
+      }
     });
+    
+    console.log(`Found ${Object.keys(bossData).length} bosses for room ${code}`);
+    console.log('Boss data summary:', Object.keys(bossData).map(bossId => ({
+      bossId,
+      memberCount: bossData[bossId].data?.members?.length || 0
+    })));
     
     res.json(bossData);
   });
@@ -141,15 +165,28 @@ io.on('connection', (socket) => {
   socket.on('updateBossData', (data) => {
     const { roomCode, bossId, bossName, bossData } = data;
     
+    console.log(`Socket: Saving boss data for room ${roomCode}, boss ${bossId}`);
+    console.log(`Socket: Member count: ${bossData?.members?.length || 0}`);
+    
+    // Validate data structure
+    if (!bossData || !bossData.members) {
+      console.error('Socket: Invalid boss data structure:', bossData);
+      socket.emit('saveError', { message: 'Invalid data structure' });
+      return;
+    }
+    
     // Save to database
     const query = `INSERT OR REPLACE INTO boss_data (room_code, boss_id, boss_name, data, updated_at) 
                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`;
     
     db.run(query, [roomCode, bossId, bossName, JSON.stringify(bossData)], function(err) {
       if (err) {
-        console.error('Database error:', err);
+        console.error('Socket: Database error:', err);
+        socket.emit('saveError', { message: 'Failed to save data' });
         return;
       }
+      
+      console.log(`Socket: Successfully saved boss data for ${bossId} in room ${roomCode}`);
       
       // Broadcast to all clients in the room
       io.to(`room_${roomCode}`).emit('bossDataUpdated', {
