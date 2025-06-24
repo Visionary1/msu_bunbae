@@ -560,12 +560,16 @@
                 // Debounced save function to prevent focus loss
                 function debouncedSave(bossId, delay = 1000) {
                     // Clear existing timeout for this boss
+                    console.log(`🕐 Debounced save called for boss: ${bossId}, delay: ${delay}ms`);
+
                     if (saveTimeouts[bossId]) {
+                        console.log(`⏰ Clearing existing timeout for boss: ${bossId}`);
                         clearTimeout(saveTimeouts[bossId]);
                     }
                     
                     // Set new timeout
                     saveTimeouts[bossId] = setTimeout(() => {
+                        console.log(`🚀 Executing delayed save for boss: ${bossId}`);
                         saveBossData(bossId);
                     }, delay);
                 }
@@ -691,72 +695,102 @@ async function createRoom() {
         }
 
         async function loadBossData() {
-            console.log('Loading boss data for room:', currentRoom.code);
+            console.log(`🔍 Loading boss data for room: ${currentRoom.code}`);
             
             // Suppress socket updates during initial loading
             suppressSocketUpdates = true;
+            console.log(`🚫 Socket updates suppressed during loading`);
             
             try {
+                console.log(`📡 Fetching data from: /api/rooms/${currentRoom.code}/boss-data`);
                 const response = await fetch(`/api/rooms/${currentRoom.code}/boss-data`);
+                
+                console.log(`📋 Response status: ${response.status} ${response.statusText}`);
+                
                 if (response.ok) {
                     const serverBossData = await response.json();
-                    console.log('Loaded server boss data:', serverBossData);
+                    console.log(`📦 Raw server boss data:`, serverBossData);
                     
                     // Check if we actually have any data
                     const hasData = Object.keys(serverBossData).length > 0;
-                    console.log('Has server data:', hasData);
+                    console.log(`❓ Has server data: ${hasData}`);
                     
                     if (hasData) {
+                        console.log(`📊 Processing ${Object.keys(serverBossData).length} bosses from server`);
+                        
                         // First, update the bossData object
                         Object.keys(serverBossData).forEach(bossId => {
+                            console.log(`🏆 Processing boss: ${bossId}`);
+                            
                             bossData[bossId] = {
                                 name: serverBossData[bossId].name,
                                 data: serverBossData[bossId].data,
                                 active: true
                             };
                             
-                            console.log(`Boss ${bossId} has ${bossData[bossId].data?.members?.length || 0} members`);
+                            const memberCount = bossData[bossId].data?.members?.length || 0;
+                            console.log(`👥 Boss ${bossId} has ${memberCount} members`);
+                            console.log(`📋 Boss ${bossId} data:`, bossData[bossId].data);
                             
                             // Update checkbox selection
                             const checkbox = document.getElementById(bossId);
-                            if (checkbox && !checkbox.checked) {
-                                checkbox.checked = true;
-                                const bossItem = checkbox.closest('.boss-item');
-                                bossItem.classList.add('selected');
-                                if (!selectedBosses.includes(bossId)) {
-                                    selectedBosses.push(bossId);
+                            if (checkbox) {
+                                if (!checkbox.checked) {
+                                    console.log(`☑️ Checking boss checkbox: ${bossId}`);
+                                    checkbox.checked = true;
+                                    const bossItem = checkbox.closest('.boss-item');
+                                    bossItem.classList.add('selected');
+                                    if (!selectedBosses.includes(bossId)) {
+                                        selectedBosses.push(bossId);
+                                    }
+                                } else {
+                                    console.log(`✅ Boss checkbox already checked: ${bossId}`);
                                 }
+                            } else {
+                                console.error(`❌ Checkbox not found for boss: ${bossId}`);
                             }
                         });
                         
+                        console.log(`📋 Selected bosses after processing:`, selectedBosses);
+                        console.log(`📋 Complete bossData object:`, bossData);
+                        
                         // Now update the boss details display
+                        console.log(`🔄 Updating boss details display...`);
                         updateBossDetails();
                         
                         // After the DOM is updated, restore all the boss data
                         setTimeout(() => {
+                            console.log(`🔄 Starting boss data restoration...`);
                             Object.keys(serverBossData).forEach((bossId, index) => {
-                                console.log(`Scheduling restore for boss: ${bossId}`);
+                                console.log(`⏰ Scheduling restore for boss: ${bossId} (index: ${index})`);
                                 setTimeout(() => {
+                                    console.log(`🚀 Executing restore for boss: ${bossId}`);
                                     restoreBossData(bossId);
-                                }, index * 100); // Stagger the restoration
+                                }, index * 150); // Stagger the restoration
                             });
                             
                             // Re-enable socket updates after restoration is complete
+                            const restoreDelay = Object.keys(serverBossData).length * 150 + 300;
+                            console.log(`⏰ Will re-enable socket updates in ${restoreDelay}ms`);
                             setTimeout(() => {
                                 suppressSocketUpdates = false;
                                 dataLoadingComplete = true;
-                                console.log('Data loading complete, socket updates re-enabled');
-                            }, Object.keys(serverBossData).length * 100 + 200);
-                        }, 300);
+                                console.log(`✅ Data loading complete, socket updates re-enabled`);
+                            }, restoreDelay);
+                        }, 400);
                     } else {
                         // No data to load
                         suppressSocketUpdates = false;
                         dataLoadingComplete = true;
-                        console.log('No server data found, loading complete');
+                        console.log(`ℹ️ No server data found, loading complete`);
                     }
+                } else {
+                    console.error(`❌ Failed to fetch boss data: ${response.status} ${response.statusText}`);
+                    suppressSocketUpdates = false;
+                    dataLoadingComplete = true;
                 }
             } catch (error) {
-                console.error('Error loading boss data:', error);
+                console.error(`💥 Error loading boss data:`, error);
                 suppressSocketUpdates = false;
                 dataLoadingComplete = true;
             }
@@ -905,6 +939,7 @@ async function createRoom() {
         }
 
         function addPartyMember(bossId) {
+            console.log(`Adding party member to boss: ${bossId}`);
             const partyContainer = document.getElementById(`party-${bossId}`);
             const memberId = `member-${bossId}-${Date.now()}`;
             
@@ -915,15 +950,15 @@ async function createRoom() {
                 <div class="member-info">
                     <div class="input-group">
                         <label>Character Name:</label>
-                        <input type="text" placeholder="Enter character name" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
+                        <input type="text" placeholder="Enter character name" oninput="console.log('Character name changed:', this.value); debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                     </div>
                     <div class="input-group">
                         <label>Wallet Address:</label>
-                        <input type="text" placeholder="0x..." oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
+                        <input type="text" placeholder="0x..." oninput="console.log('Wallet changed:', this.value); debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                     </div>
                     <div class="input-group">
                         <label>Share %:</label>
-                        <input type="number" value="0" min="0" max="100" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
+                        <input type="number" value="0" min="0" max="100" oninput="console.log('Share % changed:', this.value); debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                     </div>
                 </div>
                 <div class="reward-input">
@@ -936,10 +971,12 @@ async function createRoom() {
             
             partyContainer.appendChild(memberDiv);
             updateEvenDistribution(bossId);
+            console.log(`Added member ${memberId} to boss ${bossId}, triggering save...`);
             debouncedSave(bossId, 500); // Quick save for new member
         }
 
         function addReward(memberId) {
+            console.log(`Adding reward to member: ${memberId}`);
             const rewardsContainer = document.getElementById(`rewards-${memberId}`);
             const rewardId = `reward-${Date.now()}`;
             const bossId = memberId.split('-').slice(1, -1).join('-');
@@ -948,25 +985,28 @@ async function createRoom() {
             rewardDiv.className = 'reward-row';
             rewardDiv.id = rewardId;
             rewardDiv.innerHTML = `
-                <input type="text" placeholder="Item Name" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
-                <input type="number" placeholder="Quantity" min="1" value="1" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
-                <input type="number" placeholder="NESO per item" min="0" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                <input type="text" placeholder="Item Name" oninput="console.log('Item name changed:', this.value); debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                <input type="number" placeholder="Quantity" min="1" value="1" oninput="console.log('Quantity changed:', this.value); debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                <input type="number" placeholder="NESO per item" min="0" oninput="console.log('NESO changed:', this.value); debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
                 <button class="remove-btn" onclick="removeReward('${rewardId}', '${memberId}')">×</button>
             `;
             
             rewardsContainer.appendChild(rewardDiv);
             calculateRewardsOnly(memberId);
+            console.log(`Added reward ${rewardId} to member ${memberId}, triggering save...`);
             debouncedSave(bossId, 500);
         }
 
         function removeReward(rewardId, memberId) {
             const bossId = memberId.split('-').slice(1, -1).join('-');
+            console.log(`Removing reward ${rewardId} from member ${memberId}`);
             document.getElementById(rewardId).remove();
             calculateRewardsOnly(memberId);
             debouncedSave(bossId, 200);
         }
 
         function removeMember(memberId, bossId) {
+            console.log(`Removing member ${memberId} from boss ${bossId}`);
             document.getElementById(memberId).remove();
             updateEvenDistribution(bossId);
             debouncedSave(bossId, 200);
@@ -978,6 +1018,7 @@ async function createRoom() {
         }
 
         function updateEvenDistribution(bossId) {
+            console.log(`Updating even distribution for boss: ${bossId}`);
             const partyContainer = document.getElementById(`party-${bossId}`);
             const members = partyContainer.querySelectorAll('.party-member');
             
@@ -1120,42 +1161,66 @@ async function createRoom() {
             return transfers;
         }
 
-// Data persistence and real-time sync
-async function saveBossData(bossId, suppressBroadcast = false) {
+    // Data persistence and real-time sync
+    async function saveBossData(bossId, suppressBroadcast = false) {
+            console.log(`💾 saveBossData called for boss: ${bossId}, suppressBroadcast: ${suppressBroadcast}`);
+            
             const partyContainer = document.getElementById(`party-${bossId}`);
-            if (!partyContainer || !currentRoom) return;
+            if (!partyContainer) {
+                console.error(`❌ Party container not found for boss: ${bossId}`);
+                return;
+            }
+            
+            if (!currentRoom) {
+                console.error(`❌ No current room set`);
+                return;
+            }
             
             const members = partyContainer.querySelectorAll('.party-member');
+            console.log(`👥 Found ${members.length} party members for boss: ${bossId}`);
+            
             const memberData = [];
 
-            members.forEach(member => {
+            members.forEach((member, memberIndex) => {
                 const inputs = member.querySelectorAll('input');
-                const characterName = inputs[0].value;
-                const walletAddress = inputs[1].value;
-                const sharePercentage = inputs[2].value;
+                console.log(`📝 Processing member ${memberIndex}, found ${inputs.length} inputs`);
+                
+                const characterName = inputs[0]?.value || '';
+                const walletAddress = inputs[1]?.value || '';
+                const sharePercentage = inputs[2]?.value || '0';
+                
+                console.log(`Member ${memberIndex}: name="${characterName}", wallet="${walletAddress}", share="${sharePercentage}"`);
                 
                 const rewardRows = member.querySelectorAll('.reward-row');
+                console.log(`🎁 Found ${rewardRows.length} reward rows for member ${memberIndex}`);
+                
                 const rewards = [];
                 
-                rewardRows.forEach(row => {
+                rewardRows.forEach((row, rewardIndex) => {
                     const rewardInputs = row.querySelectorAll('input');
-                    rewards.push({
-                        itemName: rewardInputs[0].value,
-                        quantity: rewardInputs[1].value,
-                        nesoPerItem: rewardInputs[2].value
-                    });
+                    const reward = {
+                        itemName: rewardInputs[0]?.value || '',
+                        quantity: rewardInputs[1]?.value || '1',
+                        nesoPerItem: rewardInputs[2]?.value || '0'
+                    };
+                    console.log(`Reward ${rewardIndex}:`, reward);
+                    rewards.push(reward);
                 });
                 
-                memberData.push({
+                const memberInfo = {
                     id: member.id,
                     characterName,
                     walletAddress,
                     sharePercentage,
                     rewards
-                });
+                };
+                
+                console.log(`📊 Complete member ${memberIndex} data:`, memberInfo);
+                memberData.push(memberInfo);
             });
 
             const bossName = document.querySelector(`#${bossId}`).closest('.boss-item').querySelector('.boss-name').textContent;
+            console.log(`🏆 Boss name: ${bossName}`);
             
             if (!bossData[bossId]) {
                 bossData[bossId] = {};
@@ -1163,40 +1228,63 @@ async function saveBossData(bossId, suppressBroadcast = false) {
             bossData[bossId].data = { members: memberData };
             bossData[bossId].active = true;
 
-            console.log(`Saving boss data for ${bossId}, members:`, memberData.length, 'suppressBroadcast:', suppressBroadcast);
+            console.log(`📦 Final boss data for ${bossId}:`, {
+                memberCount: memberData.length,
+                bossName: bossName,
+                data: bossData[bossId].data
+            });
 
-            // Only send to server if not suppressing broadcast (to avoid loops)
+            // Only send to server if not suppressing broadcast
             if (!suppressBroadcast && socket && socket.connected) {
+                console.log(`🌐 Sending data to server via socket for boss: ${bossId}`);
+                console.log(`📡 Socket data being sent:`, {
+                    roomCode: currentRoom.code,
+                    bossId,
+                    bossName,
+                    bossData: { members: memberData }
+                });
+                
                 socket.emit('updateBossData', {
                     roomCode: currentRoom.code,
                     bossId,
                     bossName,
                     bossData: { members: memberData }
                 });
+                console.log(`✅ Socket emit completed for boss: ${bossId}`);
+            } else {
+                console.log(`🚫 Skipping server save - suppressBroadcast: ${suppressBroadcast}, socket connected: ${socket?.connected}`);
             }
         }
 
         function restoreBossData(bossId) {
-            console.log(`Attempting to restore data for boss: ${bossId}`);
+            console.log(`🔄 Attempting to restore data for boss: ${bossId}`);
             
             if (!bossData[bossId] || !bossData[bossId].data || !bossData[bossId].data.members) {
-                console.log(`No data to restore for boss: ${bossId}`);
+                console.log(`❌ No data to restore for boss: ${bossId}`, {
+                    hasBossData: !!bossData[bossId],
+                    hasData: !!bossData[bossId]?.data,
+                    hasMembers: !!bossData[bossId]?.data?.members,
+                    actualData: bossData[bossId]
+                });
                 return;
             }
             
             const partyContainer = document.getElementById(`party-${bossId}`);
             if (!partyContainer) {
-                console.log(`Party container not found for boss: ${bossId}, waiting...`);
+                console.log(`❌ Party container not found for boss: ${bossId}, will retry...`);
                 setTimeout(() => restoreBossData(bossId), 100);
                 return;
             }
 
-            console.log(`Restoring ${bossData[bossId].data.members.length} members for boss: ${bossId}`);
+            const membersToRestore = bossData[bossId].data.members;
+            console.log(`🔄 Restoring ${membersToRestore.length} members for boss: ${bossId}`, membersToRestore);
 
             // Clear existing members first
             partyContainer.innerHTML = '';
 
-            bossData[bossId].data.members.forEach((memberData, memberIndex) => {
+            membersToRestore.forEach((memberData, memberIndex) => {
+                console.log(`👤 Restoring member ${memberIndex}:`, memberData);
+                
                 const memberId = memberData.id || `member-${bossId}-${Date.now()}-${memberIndex}`;
                 
                 const memberDiv = document.createElement('div');
@@ -1206,15 +1294,15 @@ async function saveBossData(bossId, suppressBroadcast = false) {
                     <div class="member-info">
                         <div class="input-group">
                             <label>Character Name:</label>
-                            <input type="text" placeholder="Enter character name" value="${memberData.characterName || ''}" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
+                            <input type="text" placeholder="Enter character name" value="${memberData.characterName || ''}" oninput="console.log('Restored field changed:', this.value); debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                         </div>
                         <div class="input-group">
                             <label>Wallet Address:</label>
-                            <input type="text" placeholder="0x..." value="${memberData.walletAddress || ''}" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
+                            <input type="text" placeholder="0x..." value="${memberData.walletAddress || ''}" oninput="console.log('Restored field changed:', this.value); debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                         </div>
                         <div class="input-group">
                             <label>Share %:</label>
-                            <input type="number" value="${memberData.sharePercentage || 0}" min="0" max="100" oninput="debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
+                            <input type="number" value="${memberData.sharePercentage || 0}" min="0" max="100" oninput="console.log('Restored field changed:', this.value); debouncedSave('${bossId}'); updateDistributionOnly('${bossId}')">
                         </div>
                     </div>
                     <div class="reward-input">
@@ -1226,31 +1314,39 @@ async function saveBossData(bossId, suppressBroadcast = false) {
                 `;
                 
                 partyContainer.appendChild(memberDiv);
+                console.log(`✅ Added member div for ${memberId}`);
                 
                 // Restore rewards for this member
                 if (memberData.rewards && memberData.rewards.length > 0) {
+                    console.log(`🎁 Restoring ${memberData.rewards.length} rewards for member ${memberIndex}`);
                     const rewardsContainer = document.getElementById(`rewards-${memberId}`);
+                    
                     memberData.rewards.forEach((reward, rewardIndex) => {
+                        console.log(`🎁 Restoring reward ${rewardIndex}:`, reward);
                         const rewardId = `reward-${Date.now()}-${memberIndex}-${rewardIndex}`;
                         const rewardDiv = document.createElement('div');
                         rewardDiv.className = 'reward-row';
                         rewardDiv.id = rewardId;
                         rewardDiv.innerHTML = `
-                            <input type="text" placeholder="Item Name" value="${reward.itemName || ''}" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
-                            <input type="number" placeholder="Quantity" min="1" value="${reward.quantity || 1}" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
-                            <input type="number" placeholder="NESO per item" min="0" value="${reward.nesoPerItem || 0}" oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                            <input type="text" placeholder="Item Name" value="${reward.itemName || ''}" oninput="console.log('Restored reward changed:', this.value); debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                            <input type="number" placeholder="Quantity" min="1" value="${reward.quantity || 1}" oninput="console.log('Restored reward changed:', this.value); debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                            <input type="number" placeholder="NESO per item" min="0" value="${reward.nesoPerItem || 0}" oninput="console.log('Restored reward changed:', this.value); debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
                             <button class="remove-btn" onclick="removeReward('${rewardId}', '${memberId}')">×</button>
                         `;
                         rewardsContainer.appendChild(rewardDiv);
                     });
+                } else {
+                    console.log(`ℹ️ No rewards to restore for member ${memberIndex}`);
                 }
             });
             
             // Update the distribution after restoring all data
             setTimeout(() => {
+                console.log(`📊 Updating distribution for restored boss: ${bossId}`);
                 updateDistribution(bossId);
-                // REMOVED: No longer auto-save after restoration to prevent loops
-            }, 10);
+            }, 50);
+            
+            console.log(`✅ Restoration complete for boss: ${bossId}`);
         }
 
         // Distribution calculation
