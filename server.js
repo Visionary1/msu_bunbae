@@ -114,13 +114,27 @@ app.post('/api/rooms/:code/boss-data', (req, res) => {
   });
 });
 
-// Get all boss data for a room
+// Get all boss data for a room - FIXED VERSION
 app.get('/api/rooms/:code/boss-data', (req, res) => {
   const { code } = req.params;
   
   console.log(`📡 Fetching boss data for room: ${code}`);
   
-  db.all('SELECT * FROM boss_data WHERE room_code = ? ORDER BY updated_at DESC', [code], (err, rows) => {
+  // Get only the LATEST entry for each boss (in case of duplicates)
+  const query = `
+    SELECT boss_id, boss_name, data, updated_at
+    FROM boss_data 
+    WHERE room_code = ? 
+    AND (boss_id, updated_at) IN (
+      SELECT boss_id, MAX(updated_at) 
+      FROM boss_data 
+      WHERE room_code = ? 
+      GROUP BY boss_id
+    )
+    ORDER BY updated_at DESC
+  `;
+  
+  db.all(query, [code, code], (err, rows) => {
     if (err) {
       console.error('❌ Error fetching boss data:', err);
       res.status(500).json({ error: err.message });
@@ -128,20 +142,20 @@ app.get('/api/rooms/:code/boss-data', (req, res) => {
     }
     
     console.log(`📋 Raw database rows found: ${rows.length}`);
-    rows.forEach((row, index) => {
-      console.log(`📊 Row ${index}:`, {
-        boss_id: row.boss_id,
-        boss_name: row.boss_name,
-        data_length: row.data?.length || 0,
-        raw_data: row.data
-      });
-    });
     
     const bossData = {};
     rows.forEach(row => {
       try {
         const parsedData = JSON.parse(row.data);
-        console.log(`🔍 Parsed data for ${row.boss_id}:`, parsedData);
+        console.log(`🔍 Parsed data for ${row.boss_id}:`, {
+          memberCount: parsedData?.members?.length || 0,
+          members: parsedData?.members?.map(m => ({
+            name: m.characterName,
+            wallet: m.walletAddress,
+            share: m.sharePercentage,
+            rewardCount: m.rewards?.length || 0
+          })) || []
+        });
         
         bossData[row.boss_id] = {
           name: row.boss_name,
@@ -149,22 +163,7 @@ app.get('/api/rooms/:code/boss-data', (req, res) => {
           updatedAt: row.updated_at
         };
         
-        console.log(`✅ Boss ${row.boss_id} processed with ${parsedData?.members?.length || 0} members`);
-        if (parsedData?.members) {
-          parsedData.members.forEach((member, memberIndex) => {
-            console.log(`👤 Member ${memberIndex}:`, {
-              characterName: member.characterName,
-              walletAddress: member.walletAddress,
-              sharePercentage: member.sharePercentage,
-              rewardCount: member.rewards?.length || 0
-            });
-            if (member.rewards) {
-              member.rewards.forEach((reward, rewardIndex) => {
-                console.log(`🎁 Reward ${rewardIndex}:`, reward);
-              });
-            }
-          });
-        }
+        console.log(`✅ Boss ${row.boss_id} processed successfully`);
       } catch (parseError) {
         console.error(`❌ Error parsing data for boss ${row.boss_id}:`, parseError);
         console.error(`🔍 Raw data that failed to parse:`, row.data);
@@ -172,12 +171,11 @@ app.get('/api/rooms/:code/boss-data', (req, res) => {
       }
     });
     
-    console.log(`📦 Final boss data object keys: [${Object.keys(bossData).join(', ')}]`);
+    console.log(`📦 Final response - Found ${Object.keys(bossData).length} bosses`);
     console.log(`📊 Boss data summary:`, Object.keys(bossData).map(bossId => ({
       bossId,
       memberCount: bossData[bossId].data?.members?.length || 0,
-      hasMembers: !!bossData[bossId].data?.members,
-      firstMemberName: bossData[bossId].data?.members?.[0]?.characterName || 'none'
+      hasValidData: !!bossData[bossId].data?.members
     })));
     
     res.json(bossData);
