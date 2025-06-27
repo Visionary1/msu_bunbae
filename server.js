@@ -243,6 +243,46 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Cleanup job: delete rooms and boss_data not updated in 14+ days
+const CLEANUP_INTERVAL_HOURS = 24; // Run once a day
+const DATA_EXPIRY_DAYS = 14;
+
+function cleanupOldData() {
+  const expiryDate = new Date(Date.now() - DATA_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  // Delete boss_data older than expiry
+  db.run(
+    `DELETE FROM boss_data WHERE updated_at < ?`,
+    [expiryDate],
+    function(err) {
+      if (err) {
+        console.error('Cleanup: Error deleting old boss_data:', err);
+      } else {
+        console.log(`Cleanup: Deleted ${this.changes} old boss_data rows`);
+      }
+    }
+  );
+
+  // Delete rooms with no recent boss_data (no boss_data or all boss_data expired)
+  db.run(
+    `DELETE FROM rooms WHERE code NOT IN (
+      SELECT DISTINCT room_code FROM boss_data
+    )`,
+    [],
+    function(err) {
+      if (err) {
+        console.error('Cleanup: Error deleting old rooms:', err);
+      } else {
+        console.log(`Cleanup: Deleted ${this.changes} old rooms`);
+      }
+    }
+  );
+}
+
+// Run cleanup on server start and every 24 hours
+cleanupOldData();
+setInterval(cleanupOldData, CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000);
+
 // Start server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
