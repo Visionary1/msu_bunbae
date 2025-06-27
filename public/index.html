@@ -850,40 +850,14 @@ async function createRoom() {
 
         async function loadBossData() {
             console.log(`🚀 STARTING loadBossData for room: ${currentRoom.code}`);
-            
             try {
                 const url = `/api/rooms/${currentRoom.code}/boss-data`;
                 console.log(`📡 Fetching from: ${url}`);
-                
                 const response = await fetch(url);
                 console.log(`📋 Response status: ${response.status}`);
-                
                 if (response.ok) {
                     const serverBossData = await response.json();
                     console.log(`📦 SERVER RETURNED:`, serverBossData);
-                    
-                    // Check what we got
-                    Object.keys(serverBossData).forEach(bossId => {
-                        const boss = serverBossData[bossId];
-                        console.log(`🏆 Boss ${bossId}:`, {
-                            name: boss.name,
-                            memberCount: boss.data?.members?.length || 0,
-                            members: boss.data?.members || []
-                        });
-                        
-                        // Show each member
-                        if (boss.data?.members) {
-                            boss.data.members.forEach((member, idx) => {
-                                console.log(`  👤 Member ${idx}:`, {
-                                    name: member.characterName,
-                                    wallet: member.walletAddress,
-                                    share: member.sharePercentage,
-                                    rewards: member.rewards
-                                });
-                            });
-                        }
-                    });
-                    
                     // Store the data
                     Object.keys(serverBossData).forEach(bossId => {
                         bossData[bossId] = {
@@ -891,25 +865,11 @@ async function createRoom() {
                             data: serverBossData[bossId].data,
                             active: true
                         };
-                        
-                        // Check boss checkbox
-                        const checkbox = document.getElementById(bossId);
-                        if (checkbox && !checkbox.checked) {
-                            checkbox.checked = true;
-                            const bossItem = checkbox.closest('.boss-item');
-                            bossItem.classList.add('selected');
-                            if (!selectedBosses.includes(bossId)) {
-                                selectedBosses.push(bossId);
-                            }
-                        }
                     });
-                    
-                    console.log(`📋 Updated bossData:`, bossData);
-                    console.log(`📋 Selected bosses:`, selectedBosses);
-                    
-                    // Update UI
+                    // Automatically select all bosses with data
+                    selectedBosses = Object.keys(serverBossData);
+                    renderBossGrid();
                     updateBossDetails();
-                    
                     // Restore data after UI is ready
                     setTimeout(() => {
                         Object.keys(serverBossData).forEach(bossId => {
@@ -918,7 +878,6 @@ async function createRoom() {
                         });
                         dataLoadingComplete = true;
                     }, 500);
-                    
                 } else {
                     console.error(`❌ Server error: ${response.status}`);
                 }
