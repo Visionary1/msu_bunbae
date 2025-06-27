@@ -5,188 +5,240 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MapleStory Boss Reward Tracker</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        html, body {
+            height: 100%;
         }
-
         body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f6fa;
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
         }
-
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
+            max-width: 900px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+            padding: 40px 32px 32px 32px;
         }
-
         .header {
-            background: linear-gradient(45deg, #FF6B6B, #FFE66D);
-            padding: 30px;
-            text-align: center;
-            color: white;
+            padding: 0 0 32px 0;
+            text-align: left;
+            color: #222;
         }
-
         .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-size: 2.8em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
         }
-
+        .header p {
+            font-size: 1.2em;
+            color: #888;
+            margin-top: 0;
+        }
         .room-section {
-            padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 2px solid #e9ecef;
+            padding: 0 0 32px 0;
+            background: none;
+            border-bottom: 1px solid #ececec;
         }
-
         .room-controls {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .input-group {
-            display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 18px;
+            margin-bottom: 32px;
+            align-items: stretch;
         }
-
-        .input-group label {
-            font-weight: bold;
-            color: #495057;
+        .room-controls > * {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            height: 56px;
+            margin: 0;
         }
-
-        input[type="text"] {
-            padding: 12px;
-            border: 2px solid #dee2e6;
+        .room-controls .input-group {
+            margin-bottom: 0;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .room-controls .input-group label {
+            margin-bottom: 4px;
+        }
+        .room-controls .btn,
+        .room-controls .btn-primary,
+        .room-controls .btn-success {
+            height: 56px;
+            padding-top: 0;
+            padding-bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1em;
+            border-radius: 14px;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 14px;
+            border: 1px solid #e0e0e0;
             border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
+            font-size: 1em;
+            background: #fafbfc;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            height: 44px;
+            margin-bottom: 0;
         }
-
-        input[type="text"]:focus {
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #007aff;
+            background: #fff;
+            box-shadow: 0 0 0 2px #007aff22;
         }
-
         .btn {
-            padding: 12px 24px;
+            padding: 12px 28px;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 1em;
             cursor: pointer;
-            transition: all 0.3s;
-            font-weight: bold;
+            font-weight: 600;
+            background: #f5f6fa;
+            color: #222;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         }
-
         .btn-primary {
-            background: #667eea;
-            color: white;
+            background: #007aff;
+            color: #fff;
+            width: 100%;
+            display: block;
+            margin-bottom: 24px;
         }
-
         .btn-primary:hover {
-            background: #5a6fd8;
-            transform: translateY(-2px);
+            background: #005ecb;
         }
-
         .btn-success {
-            background: #28a745;
-            color: white;
+            background: #34c759;
+            color: #fff;
         }
-
         .btn-success:hover {
-            background: #218838;
+            background: #28a745;
         }
-
         .room-info {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #2196f3;
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 10px;
+            border-left: 4px solid #007aff;
+            margin-bottom: 0;
         }
-
         .connection-status {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 10px 15px;
+            padding: 10px 18px;
             border-radius: 20px;
-            color: white;
-            font-weight: bold;
+            color: #fff;
+            font-weight: 600;
             z-index: 1000;
+            font-size: 1em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-
         .status-connected {
-            background: #28a745;
+            background: #34c759;
         }
-
         .status-disconnected {
-            background: #dc3545;
+            background: #ff3b30;
         }
-
         .main-content {
             padding: 30px;
         }
-
         .boss-selection {
             margin-bottom: 30px;
         }
-
         .boss-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
             margin-top: 20px;
         }
-
-        .boss-item {
+        .boss-row {
+            display: grid;
+            align-items: center;
+            gap: 0 32px;
+            margin-bottom: 0;
+            width: 100%;
+        }
+        .boss-starbox {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 15px;
-            background: #f8f9fa;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            transition: all 0.3s;
+            min-width: 90px;
+            padding: 0 0 0 2px;
+            background: none;
         }
-
-        .boss-item:hover {
-            background: #e9ecef;
+        .boss-starbox .boss-star {
+            color: #A78B5C;
+            font-size: 1.5em;
+            margin-right: 2px;
         }
-
-        .boss-item.selected {
-            background: #e3f2fd;
-            border-color: #2196f3;
+        .boss-row .boss-name, .boss-row .boss-name-empty {
+            min-width: 0;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+            justify-self: start;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
-        .boss-checkbox {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
+        .boss-row .boss-name-empty {
+            background: none;
+            border: none;
+            box-shadow: none;
+            cursor: default;
         }
-
+        .boss-names {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px 32px;
+        }
         .boss-name {
-            font-weight: bold;
-            color: #495057;
+            font-size: 1.18em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s, border 0.2s;
+            padding: 14px 24px;
+            border-radius: 12px;
+            border: 2px solid #e0e0e0;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
         }
-
+        .boss-name.selected {
+            color: #28a745;
+            background: #eafbe7;
+            border: 2px solid #28a745;
+        }
+        .boss-name.unselected {
+            color: #e53935;
+            background: none;
+            border: 2px solid #e0e0e0;
+        }
         .boss-details {
             margin-top: 30px;
             display: none;
         }
-
         .boss-details.active {
             display: block;
         }
-
         .boss-section {
             background: white;
             border-radius: 12px;
@@ -195,7 +247,6 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             border: 2px solid #dee2e6;
         }
-
         .boss-header {
             background: linear-gradient(45deg, #FF6B6B, #FFE66D);
             padding: 20px;
@@ -207,68 +258,79 @@
             align-items: center;
             transition: background 0.3s;
         }
-
         .boss-header:hover {
             background: linear-gradient(45deg, #ff5252, #ffd54f);
         }
-
         .boss-header h3 {
             margin: 0;
             font-size: 1.3em;
         }
-
         .boss-toggle {
             font-size: 1.2em;
             transition: transform 0.3s;
         }
-
         .boss-content {
             transition: max-height 0.3s ease-out;
             overflow: hidden;
         }
-
         .boss-content.collapsed {
             max-height: 0;
         }
-
         .boss-content.expanded {
             max-height: none;
         }
-
         .party-section {
             background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
         }
-
         .party-member {
             background: white;
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 32px;
             border: 2px solid #dee2e6;
         }
-
         .member-info {
             display: grid;
             grid-template-columns: 1fr 1fr 100px;
             gap: 15px;
             margin-bottom: 15px;
         }
-
         .reward-input {
             margin-top: 15px;
         }
-
         .reward-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr auto;
-            gap: 10px;
-            margin-bottom: 10px;
+            display: flex;
+            gap: 12px;
             align-items: center;
+            margin-bottom: 12px;
         }
-
+        .reward-rows {
+            margin-bottom: 20px;
+        }
+        .reward-row input[type="text"],
+        .reward-row input[type="number"] {
+            width: auto;
+            min-width: 120px;
+            margin-right: 8px;
+            margin-bottom: 0;
+        }
+        .reward-row input[type="number"] {
+            max-width: 80px;
+        }
+        .reward-row input[type="text"] {
+            flex: 2;
+        }
+        .reward-row input, .reward-row select {
+            height: 44px;
+            font-size: 1em;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            background: #fafbfc;
+            padding: 10px 14px;
+        }
         .remove-btn {
             background: #dc3545;
             color: white;
@@ -277,24 +339,48 @@
             border-radius: 4px;
             cursor: pointer;
         }
-
         .add-reward-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            display: block;
+            background: #fff;
+            color: #28a745;
+            border: 1.5px solid #28a745;
+            padding: 10px 18px;
+            border-radius: 8px;
             cursor: pointer;
             margin-top: 10px;
+            font-size: 1em;
+            font-weight: 500;
+            text-align: center;
+            transition: background 0.2s, color 0.2s, border 0.2s;
+            width: 100%;
         }
-
+        .add-reward-btn:hover {
+            background: #eafbe7;
+        }
+        .remove-member-btn {
+            display: block;
+            background: #fff;
+            color: #dc3545;
+            border: 1.5px solid #dc3545;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 1em;
+            font-weight: 500;
+            text-align: center;
+            transition: background 0.2s, color 0.2s, border 0.2s;
+            width: 100%;
+        }
+        .remove-member-btn:hover {
+            background: #fbeaea;
+        }
         .distribution-section {
             background: #e8f5e8;
             padding: 20px;
             border-radius: 8px;
             margin-top: 20px;
         }
-
         .total-value {
             font-size: 1.5em;
             font-weight: bold;
@@ -302,20 +388,17 @@
             text-align: center;
             margin-bottom: 20px;
         }
-
         .distribution-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
         }
-
         .distribution-item {
             background: white;
             padding: 15px;
             border-radius: 8px;
             text-align: center;
         }
-
         .total-rewards-panel {
             background: #f8f9fa;
             border: 2px solid #dee2e6;
@@ -324,7 +407,6 @@
             overflow: hidden;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-
         .total-rewards-header {
             background: linear-gradient(45deg, #28a745, #20c997);
             color: white;
@@ -335,30 +417,24 @@
             align-items: center;
             transition: background 0.3s;
         }
-
         .total-rewards-header:hover {
             background: linear-gradient(45deg, #218838, #1ea67a);
         }
-
         .total-rewards-header h3 {
             margin: 0;
             font-size: 1.3em;
         }
-
         .total-rewards-content {
             padding: 20px;
             background: white;
         }
-
         .total-rewards-content.collapsed {
             display: none;
         }
-
         .total-summary {
             text-align: center;
             margin-bottom: 20px;
         }
-
         .total-value-display {
             font-size: 2em;
             font-weight: bold;
@@ -367,63 +443,136 @@
             padding: 15px;
             border-radius: 8px;
         }
-
         .total-distribution-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
-
         .total-distribution-item {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
             border: 2px solid #dee2e6;
         }
-
         .total-transfers {
             background: #e3f2fd;
             padding: 20px;
             border-radius: 8px;
             border-left: 4px solid #2196f3;
         }
-
         .boss-breakdown {
             font-size: 0.9em;
             color: #6c757d;
             margin-top: 10px;
         }
-
         .boss-breakdown-item {
             display: flex;
             justify-content: space-between;
             margin: 5px 0;
         }
-
         .hidden {
             display: none;
         }
-
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2em;
             }
-            
             .room-controls {
                 flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
             }
-            
+            .room-controls > * {
+                width: 100%;
+                min-width: 0;
+            }
             .member-info {
                 grid-template-columns: 1fr;
             }
-            
             .reward-row {
-                grid-template-columns: 1fr;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
             }
-
+            .remove-btn {
+                align-self: flex-end;
+                margin-top: 6px;
+                margin-left: 0;
+                width: 44px;
+                height: 44px;
+                display: block;
+            }
             .total-distribution-grid {
                 grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 1200px) {
+            .boss-row {
+                gap: 0 16px;
+            }
+            .boss-row .boss-name, .boss-row .boss-name-empty {
+                font-size: 1em;
+                padding: 12px 12px;
+            }
+        }
+        @media (max-width: 900px) {
+            .boss-row {
+                grid-template-columns: 90px repeat(2, 1fr) !important;
+            }
+            .room-controls {
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
+            }
+            .room-controls > * {
+                width: 100%;
+                min-width: 0;
+                height: auto;
+            }
+        }
+        @media (max-width: 600px) {
+            .boss-row {
+                grid-template-columns: 60px 1fr !important;
+                gap: 0 8px;
+            }
+            .boss-row .boss-name, .boss-row .boss-name-empty {
+                font-size: 0.98em;
+                padding: 10px 6px;
+                min-width: 0;
+                width: 100%;
+                max-width: 100%;
+                white-space: normal;
+                overflow: visible;
+                text-overflow: unset;
+                text-align: center;
+                word-break: break-word;
+                line-height: 1.3;
+            }
+        }
+        .party-section .btn-primary {
+            margin-bottom: 24px;
+        }
+        .trade-fee-label {
+            display: flex;
+            align-items: center;
+            font-size: 0.98em;
+            font-weight: 500;
+            color: #555;
+            margin: 0 8px 0 0;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .trade-fee-checkbox {
+            accent-color: #007aff;
+            width: 18px;
+            height: 18px;
+            margin-right: 6px;
+        }
+        @media (max-width: 768px) {
+            .trade-fee-label {
+                margin-top: 6px;
+                margin-bottom: 2px;
             }
         }
     </style>
@@ -435,8 +584,8 @@
 
     <div class="container">
         <div class="header">
-            <h1>🍁 MapleStory Boss Reward Tracker</h1>
-            <p>Fair distribution of boss rewards among party members</p>
+            <h1>🍁 MapleStory Boss Rewards Split</h1>
+            <p>Rewards Calculator</p>
         </div>
 
         <div class="room-section">
@@ -467,60 +616,7 @@
             <div id="mainApp" class="hidden">
                 <div class="boss-selection">
                     <h2>Select Weekly Bosses</h2>
-                    <div class="boss-grid">
-                        <div class="boss-item" onclick="toggleBoss('chaos-zakum')">
-                            <input type="checkbox" class="boss-checkbox" id="chaos-zakum">
-                            <span class="boss-name">Chaos Zakum</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('hard-hilla')">
-                            <input type="checkbox" class="boss-checkbox" id="hard-hilla">
-                            <span class="boss-name">Hard Hilla</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('chaos-pierre')">
-                            <input type="checkbox" class="boss-checkbox" id="chaos-pierre">
-                            <span class="boss-name">Chaos Pierre</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('chaos-von-bon')">
-                            <input type="checkbox" class="boss-checkbox" id="chaos-von-bon">
-                            <span class="boss-name">Chaos Von Bon</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('chaos-crimson-queen')">
-                            <input type="checkbox" class="boss-checkbox" id="chaos-crimson-queen">
-                            <span class="boss-name">Chaos Crimson Queen</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('chaos-vellum')">
-                            <input type="checkbox" class="boss-checkbox" id="chaos-vellum">
-                            <span class="boss-name">Chaos Vellum</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('hard-magnus')">
-                            <input type="checkbox" class="boss-checkbox" id="hard-magnus">
-                            <span class="boss-name">Hard Magnus</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('chaos-pink-bean')">
-                            <input type="checkbox" class="boss-checkbox" id="chaos-pink-bean">
-                            <span class="boss-name">Chaos Pink Bean</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('easy-cygnus')">
-                            <input type="checkbox" class="boss-checkbox" id="easy-cygnus">
-                            <span class="boss-name">Easy Cygnus</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('normal-cygnus')">
-                            <input type="checkbox" class="boss-checkbox" id="normal-cygnus">
-                            <span class="boss-name">Normal Cygnus</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('chaos-papulatus')">
-                            <input type="checkbox" class="boss-checkbox" id="chaos-papulatus">
-                            <span class="boss-name">Chaos Papulatus</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('normal-lotus')">
-                            <input type="checkbox" class="boss-checkbox" id="normal-lotus">
-                            <span class="boss-name">Normal Lotus</span>
-                        </div>
-                        <div class="boss-item" onclick="toggleBoss('normal-damien')">
-                            <input type="checkbox" class="boss-checkbox" id="normal-damien">
-                            <span class="boss-name">Normal Damien</span>
-                        </div>
-                    </div>
+                    <div class="boss-grid"></div>
                 </div>
 
                 <!-- Total Rewards Panel -->
@@ -716,7 +812,7 @@ async function createRoom() {
 
                 if (response.ok) {
                     currentRoom = await response.json();
-                    showRoom();
+                    onRoomJoinedOrCreated();
                     socket.emit('joinRoom', currentRoom.code);
                     dataLoadingComplete = true; // New room, no data to load
                 } else {
@@ -740,7 +836,7 @@ async function createRoom() {
                 
                 if (response.ok) {
                     currentRoom = await response.json();
-                    showRoom();
+                    onRoomJoinedOrCreated();
                     socket.emit('joinRoom', currentRoom.code);
                     await loadBossData();
                 } else {
@@ -862,20 +958,13 @@ async function createRoom() {
 
         // Boss selection
         function toggleBoss(bossId) {
-            const checkbox = document.getElementById(bossId);
-            checkbox.checked = !checkbox.checked;
-            
-            const bossItem = checkbox.closest('.boss-item');
-            if (checkbox.checked) {
-                bossItem.classList.add('selected');
-                if (!selectedBosses.includes(bossId)) {
-                    selectedBosses.push(bossId);
-                }
+            const idx = selectedBosses.indexOf(bossId);
+            if (idx === -1) {
+                selectedBosses.push(bossId);
             } else {
-                bossItem.classList.remove('selected');
-                selectedBosses = selectedBosses.filter(id => id !== bossId);
+                selectedBosses.splice(idx, 1);
             }
-
+            renderBossGrid();
             updateBossDetails();
         }
 
@@ -894,10 +983,9 @@ async function createRoom() {
             selectedBosses.forEach(bossId => {
                 const existingSection = document.getElementById(`boss-section-${bossId}`);
                 if (!existingSection) {
-                    const bossName = document.querySelector(`#${bossId}`).closest('.boss-item').querySelector('.boss-name').textContent;
+                    const bossName = document.getElementById(bossId)?.textContent || bossId;
                     const bossSection = createBossSection(bossId, bossName);
                     bossDetails.appendChild(bossSection);
-                    
                     if (!bossData[bossId]) {
                         bossData[bossId] = {
                             name: bossName,
@@ -1002,9 +1090,9 @@ async function createRoom() {
                 <div class="reward-input">
                     <h5>Rewards:</h5>
                     <div class="reward-rows" id="rewards-${memberId}"></div>
-                    <button class="add-reward-btn" onclick="addReward('${memberId}')">Add Reward</button>
+                    <button class="add-reward-btn" onclick="addReward('${memberId}')">+ Add Reward</button>
                 </div>
-                <button class="remove-btn" onclick="removeMember('${memberId}', '${bossId}')" style="margin-top: 10px;">Remove Member</button>
+                <button class="remove-member-btn" onclick="removeMember('${memberId}', '${bossId}')" style="margin-top: 12px;">× Remove Member</button>
             `;
             
             partyContainer.appendChild(memberDiv);
@@ -1021,13 +1109,14 @@ async function createRoom() {
             rewardDiv.className = 'reward-row';
             rewardDiv.id = rewardId;
             rewardDiv.innerHTML = `
-                <input type="text" placeholder="Item Name" 
+                <input type="text" placeholder="Reward Name" 
                        oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')"
                        onchange="showNotification('New reward added', 'info')">
-                <input type="number" placeholder="Quantity" min="1" value="1" 
+                <input type="number" placeholder="1" min="1" value="1" 
                        oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
-                <input type="number" placeholder="NESO per item" min="0" 
+                <input type="number" placeholder="NESO" min="0" 
                        oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')">
+                <label class="trade-fee-label"><input type="checkbox" class="trade-fee-checkbox" onchange="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')"> Apply 5% Trade Fee</label>
                 <button class="remove-btn" onclick="removeReward('${rewardId}', '${memberId}')">×</button>
             `;
             
@@ -1096,7 +1185,10 @@ async function createRoom() {
                     const inputs = row.querySelectorAll('input');
                     const quantity = parseInt(inputs[1].value) || 0;
                     const nesoPerItem = parseInt(inputs[2].value) || 0;
-                    memberRewardValue += quantity * nesoPerItem;
+                    const tradeFeeChecked = row.querySelector('.trade-fee-checkbox')?.checked;
+                    let rewardValue = quantity * nesoPerItem;
+                    if (tradeFeeChecked) rewardValue = Math.floor(rewardValue * 0.95);
+                    memberRewardValue += rewardValue;
                 });
                 
                 totalValue += memberRewardValue;
@@ -1110,7 +1202,7 @@ async function createRoom() {
                 });
             });
 
-            document.getElementById(`total-${bossId}`).textContent = `Total Value: ${totalValue} NESO`;
+            document.getElementById(`total-${bossId}`).textContent = `Total Value: ${totalValue} NESO (${nesoToNxpc(totalValue)} NXPC)`;
             
             const distributionContainer = document.getElementById(`distribution-${bossId}`);
             distributionContainer.innerHTML = '';
@@ -1142,7 +1234,7 @@ async function createRoom() {
                 transferDiv.innerHTML = `
                     <h4>💸 Transfer Instructions:</h4>
                     ${transfers.map(transfer => 
-                        `<p><strong>${transfer.from}</strong> → <strong>${transfer.to}</strong>: ${transfer.amount} NESO</p>`
+                        `<p><strong>${transfer.from}</strong> → <strong>${transfer.to}</strong>: ${transfer.amount} NESO (${nesoToNxpc(transfer.amount)} NXPC)</p>`
                     ).join('')}
                 `;
                 distributionContainer.appendChild(transferDiv);
@@ -1185,8 +1277,8 @@ async function createRoom() {
                 
                 if (transferAmount > 0) {
                     transfers.push({
-                        from: debtor.name || 'Unnamed',
-                        to: creditor.name || 'Unnamed',
+                        from: debtor.name,
+                        to: creditor.name,
                         amount: transferAmount
                     });
                 }
@@ -1223,7 +1315,8 @@ async function createRoom() {
                     rewards.push({
                         itemName: rewardInputs[0].value,
                         quantity: rewardInputs[1].value,
-                        nesoPerItem: rewardInputs[2].value
+                        nesoPerItem: rewardInputs[2].value,
+                        tradeFee: row.querySelector('.trade-fee-checkbox')?.checked || false
                     });
                 });
                 
@@ -1236,7 +1329,7 @@ async function createRoom() {
                 });
             });
 
-            const bossName = document.querySelector(`#${bossId}`).closest('.boss-item').querySelector('.boss-name').textContent;
+            const bossName = document.getElementById(bossId).textContent;
             
             if (!bossData[bossId]) {
                 bossData[bossId] = {};
@@ -1302,9 +1395,9 @@ async function createRoom() {
                     <div class="reward-input">
                         <h5>Rewards:</h5>
                         <div class="reward-rows" id="rewards-${memberId}"></div>
-                        <button class="add-reward-btn" onclick="addReward('${memberId}')">Add Reward</button>
+                        <button class="add-reward-btn" onclick="addReward('${memberId}')">+ Add Reward</button>
                     </div>
-                    <button class="remove-btn" onclick="removeMember('${memberId}', '${bossId}')" style="margin-top: 10px;">Remove Member</button>
+                    <button class="remove-member-btn" onclick="removeMember('${memberId}', '${bossId}')" style="margin-top: 12px;">× Remove Member</button>
                 `;
                 
                 partyContainer.appendChild(memberDiv);
@@ -1318,15 +1411,16 @@ async function createRoom() {
                         rewardDiv.className = 'reward-row';
                         rewardDiv.id = rewardId;
                         rewardDiv.innerHTML = `
-                            <input type="text" placeholder="Item Name" value="${reward.itemName || ''}" 
+                            <input type="text" placeholder="Reward Name" value="${reward.itemName || ''}" 
                                    oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')"
                                    onchange="showNotification('Reward updated', 'info')">
-                            <input type="number" placeholder="Quantity" min="1" value="${reward.quantity || 1}" 
+                            <input type="number" placeholder="1" min="1" value="${reward.quantity || 1}" 
                                    oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')"
                                    onchange="showNotification('Quantity updated', 'info')">
-                            <input type="number" placeholder="NESO per item" min="0" value="${reward.nesoPerItem || 0}" 
+                            <input type="number" placeholder="NESO" min="0" value="${reward.nesoPerItem || 0}" 
                                    oninput="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')"
                                    onchange="showNotification('NESO amount updated', 'info')">
+                            <label class="trade-fee-label"><input type="checkbox" class="trade-fee-checkbox" ${reward.tradeFee ? 'checked' : ''} onchange="debouncedSave('${bossId}'); calculateRewardsOnly('${memberId}')"> Apply 5% Trade Fee</label>
                             <button class="remove-btn" onclick="removeReward('${rewardId}', '${memberId}')">×</button>
                         `;
                         rewardsContainer.appendChild(rewardDiv);
@@ -1361,7 +1455,10 @@ async function createRoom() {
                     const inputs = row.querySelectorAll('input');
                     const quantity = parseInt(inputs[1].value) || 0;
                     const nesoPerItem = parseInt(inputs[2].value) || 0;
-                    memberRewardValue += quantity * nesoPerItem;
+                    const tradeFeeChecked = row.querySelector('.trade-fee-checkbox')?.checked;
+                    let rewardValue = quantity * nesoPerItem;
+                    if (tradeFeeChecked) rewardValue = Math.floor(rewardValue * 0.95);
+                    memberRewardValue += rewardValue;
                 });
                 
                 totalValue += memberRewardValue;
@@ -1375,7 +1472,7 @@ async function createRoom() {
                 });
             });
 
-            document.getElementById(`total-${bossId}`).textContent = `Total Value: ${totalValue} NESO`;
+            document.getElementById(`total-${bossId}`).textContent = `Total Value: ${totalValue} NESO (${nesoToNxpc(totalValue)} NXPC)`;
             
             const distributionContainer = document.getElementById(`distribution-${bossId}`);
             distributionContainer.innerHTML = '';
@@ -1407,7 +1504,7 @@ async function createRoom() {
                 transferDiv.innerHTML = `
                     <h4>💸 Transfer Instructions:</h4>
                     ${transfers.map(transfer => 
-                        `<p><strong>${transfer.from}</strong> → <strong>${transfer.to}</strong>: ${transfer.amount} NESO</p>`
+                        `<p><strong>${transfer.from}</strong> → <strong>${transfer.to}</strong>: ${transfer.amount} NESO (${nesoToNxpc(transfer.amount)} NXPC)</p>`
                     ).join('')}
                 `;
                 distributionContainer.appendChild(transferDiv);
@@ -1472,7 +1569,10 @@ async function createRoom() {
                         const inputs = row.querySelectorAll('input');
                         const quantity = parseInt(inputs[1].value) || 0;
                         const nesoPerItem = parseInt(inputs[2].value) || 0;
-                        memberEarnedValue += quantity * nesoPerItem;
+                        const tradeFeeChecked = row.querySelector('.trade-fee-checkbox')?.checked;
+                        let rewardValue = quantity * nesoPerItem;
+                        if (tradeFeeChecked) rewardValue = Math.floor(rewardValue * 0.95);
+                        memberEarnedValue += rewardValue;
                     });
 
                     bossTotal += memberEarnedValue;
@@ -1526,7 +1626,10 @@ async function createRoom() {
                             const inputs = row.querySelectorAll('input');
                             const quantity = parseInt(inputs[1].value) || 0;
                             const nesoPerItem = parseInt(inputs[2].value) || 0;
-                            bossTotal += quantity * nesoPerItem;
+                            const tradeFeeChecked = row.querySelector('.trade-fee-checkbox')?.checked;
+                            let rewardValue = quantity * nesoPerItem;
+                            if (tradeFeeChecked) rewardValue = Math.floor(rewardValue * 0.95);
+                            bossTotal += rewardValue;
                         });
                     });
 
@@ -1543,7 +1646,7 @@ async function createRoom() {
         }
 
         function displayTotalRewards(allMembers, grandTotal) {
-            document.getElementById('grandTotalValue').textContent = `Grand Total: ${grandTotal} NESO`;
+            document.getElementById('grandTotalValue').textContent = `Grand Total: ${grandTotal} NESO (${nesoToNxpc(grandTotal)} NXPC)`;
 
             const distributionGrid = document.getElementById('totalDistributionGrid');
             distributionGrid.innerHTML = '';
@@ -1558,7 +1661,7 @@ async function createRoom() {
                 
                 let bossBreakdown = '';
                 memberData.bosses.forEach((bossData, bossId) => {
-                    const bossName = document.querySelector(`#${bossId}`).closest('.boss-item').querySelector('.boss-name').textContent;
+                    const bossName = document.getElementById(bossId)?.textContent || bossId;
                     bossBreakdown += `
                         <div class="boss-breakdown-item">
                             <span>${bossName}:</span>
@@ -1569,8 +1672,8 @@ async function createRoom() {
 
                 memberDiv.innerHTML = `
                     <h5>${memberData.displayName}</h5>
-                    <p><strong>Total Earned:</strong> ${memberData.totalEarned} NESO</p>
-                    <p><strong>Total Should Receive:</strong> ${memberData.totalShouldReceive} NESO</p>
+                    <p><strong>Total Earned:</strong> ${memberData.totalEarned} NESO (${nesoToNxpc(memberData.totalEarned)} NXPC)</p>
+                    <p><strong>Total Should Receive:</strong> ${memberData.totalShouldReceive} NESO (${nesoToNxpc(memberData.totalShouldReceive)} NXPC)</p>
                     <p style="color: ${deficit > 0 ? 'green' : deficit < 0 ? 'red' : 'black'}; font-weight: bold;">
                         ${deficit > 0 ? `Needs: +${deficit} NESO` : deficit < 0 ? `Owes: ${Math.abs(deficit)} NESO` : 'Balanced ✓'}
                     </p>
@@ -1644,7 +1747,7 @@ async function createRoom() {
                 transfers.forEach(transfer => {
                     transfersHTML += `
                         <div style="background: white; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #28a745;">
-                            <strong>${transfer.from}</strong> → <strong>${transfer.to}</strong>: <span style="color: #28a745; font-weight: bold;">${transfer.amount} NESO</span><br>
+                            <strong>${transfer.from}</strong> → <strong>${transfer.to}</strong>: <span style="color: #28a745; font-weight: bold;">${transfer.amount} NESO (${nesoToNxpc(transfer.amount)} NXPC)</span><br>
                             <small style="color: #6c757d;">
                                 From: ${transfer.fromWallet || 'No wallet'}<br>
                                 To: ${transfer.toWallet || 'No wallet'}
@@ -1657,18 +1760,101 @@ async function createRoom() {
             transfersContainer.innerHTML = transfersHTML;
         }
 
-        // Initialize everything
+        // --- Render Boss Selection Grid (star box left, bosses in columns, aligned) ---
+        function renderBossGrid() {
+            const grid = document.querySelector('.boss-grid');
+            grid.innerHTML = '';
+            // Find the max number of bosses in any group for column count
+            const maxBossesPerRow = Math.max(...bossGroups.map(g => g.bosses.length));
+            bossGroups.forEach(group => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'boss-row';
+                rowDiv.style.gridTemplateColumns = `110px repeat(${maxBossesPerRow}, 1fr)`;
+                // Star box (once per row)
+                const starBox = document.createElement('div');
+                starBox.className = 'boss-starbox';
+                for (let i = 0; i < group.stars; i++) {
+                    const star = document.createElement('span');
+                    star.className = 'boss-star';
+                    star.innerHTML = '★';
+                    starBox.appendChild(star);
+                }
+                rowDiv.appendChild(starBox);
+                // Boss names for this row, fill with empty cells if needed
+                for (let i = 0; i < maxBossesPerRow; i++) {
+                    if (group.bosses[i]) {
+                        const boss = group.bosses[i];
+                        const isSelected = selectedBosses.includes(boss.id);
+                        const nameSpan = document.createElement('span');
+                        nameSpan.className = 'boss-name ' + (isSelected ? 'selected' : 'unselected');
+                        nameSpan.textContent = boss.name;
+                        nameSpan.id = boss.id;
+                        nameSpan.onclick = () => toggleBoss(boss.id);
+                        rowDiv.appendChild(nameSpan);
+                    } else {
+                        // Empty cell for alignment
+                        const emptySpan = document.createElement('span');
+                        emptySpan.className = 'boss-name-empty';
+                        emptySpan.textContent = '';
+                        rowDiv.appendChild(emptySpan);
+                    }
+                }
+                grid.appendChild(rowDiv);
+            });
+        }
+
+        // --- Boss List Data (grouped by star count) ---
+        const bossGroups = [
+            { stars: 5, bosses: [
+                { id: 'chaos-papulatus', name: 'Papulatus (Chaos)' },
+                { id: 'normal-lotus', name: 'Lotus (Normal)' },
+                { id: 'normal-damien', name: 'Damien (Normal)' },
+            ]},
+            { stars: 4, bosses: [
+                { id: 'chaos-vellum', name: 'Vellum (Chaos)' },
+                { id: 'hard-magnus', name: 'Magnus (Hard)' },
+            ]},
+            { stars: 3, bosses: [
+                { id: 'chaos-pierre', name: 'Pierre (Chaos)' },
+                { id: 'chaos-von-bon', name: 'Von Bon (Chaos)' },
+                { id: 'chaos-crimson-queen', name: 'Crimson Queen (Chaos)' },
+            ]},
+            { stars: 2, bosses: [
+                { id: 'normal-cygnus', name: 'Cygnus (Normal)' },
+                { id: 'chaos-zakum', name: 'Zakum (Chaos)' },
+            ]},
+            { stars: 1, bosses: [
+                { id: 'easy-cygnus', name: 'Cygnus (Easy)' },
+                { id: 'hard-hilla', name: 'Hilla (Hard)' },
+                { id: 'chaos-pink-bean', name: 'Pink Bean (Chaos)' },
+            ]},
+        ];
+
+        // --- After DOMContentLoaded or window.onload, call renderBossGrid() ---
         window.addEventListener('load', () => {
             initializeSocket();
-            
             document.getElementById('createRoom').classList.remove('hidden');
             document.getElementById('joinRoom').classList.remove('hidden');
-
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('room')) {
                 document.getElementById('joinCode').value = urlParams.get('room');
             }
+            renderBossGrid();
         });
+
+        // When a room is created or joined, show the main app and hide room controls
+        function onRoomJoinedOrCreated() {
+            document.getElementById('createRoom').classList.add('hidden');
+            document.getElementById('joinRoom').classList.add('hidden');
+            document.getElementById('roomInfo').classList.remove('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            renderBossGrid();
+        }
+
+        // Utility function for NXPC conversion
+        function nesoToNxpc(neso) {
+            return (neso / 100000).toFixed(5).replace(/\.0+$/, '');
+        }
     </script>
 </body>
 </html>
